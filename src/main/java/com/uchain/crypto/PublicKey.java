@@ -1,6 +1,16 @@
 package com.uchain.crypto;
 
-public class PublicKey {
+import com.google.common.collect.Maps;
+import com.uchain.common.Serializable;
+import com.uchain.common.Serializabler;
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.util.Map;
+import java.util.Objects;
+
+public class PublicKey implements Serializable {
 
     private Point point;
     private boolean compressed;
@@ -39,17 +49,17 @@ public class PublicKey {
     }
 
     public byte[] hash160() {
-         return Crypto.hash160(CryptoUtil.listTobyte(new PublicKey().toBin().getData()));
+         return Crypto.hash160(CryptoUtil.listTobyte(toBin().getData()));
     }
 
-    @Override
-    public String toString() {
-        return new PublicKey().getPoint().toString();
-    }
-
-//    public String toAddress() {
-//    	return PublicKeyHash.toAddress(hash);
+//    @Override
+//    public String toString() {
+//        return new PublicKey().getPoint().toString();
 //    }
+
+    public String toAddress() {
+    	return PublicKeyHash.toAddress(pubKeyHash().getData());
+    }
 
     public Point getPoint() {
         return point;
@@ -65,5 +75,46 @@ public class PublicKey {
 
     public void setCompressed(boolean compressed) {
         this.compressed = compressed;
+    }
+
+    @Override
+    public void serialize(DataOutputStream os) {
+        try {
+            Serializabler.writeByteArray(os,CryptoUtil.binaryData2array(toBin()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static PublicKey deserialize(DataInputStream is) {
+        try {
+            return PublicKey.apply(CryptoUtil.array2binaryData(Serializabler.readByteArray(is)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof PublicKey)) return false;
+        PublicKey publicKey = (PublicKey) o;
+        return isCompressed() == publicKey.isCompressed() &&
+                Objects.equals(getPoint(), publicKey.getPoint());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getPoint(), isCompressed());
+    }
+
+    public static void main(String[] args) {
+
+        Map<PublicKey, Integer> lph = Maps.newLinkedHashMap();
+        lph.put(PublicKey.apply(new BinaryData("03b4534b44d1da47e4b4a504a210401a583f860468dec766f507251a057594e682")),1);
+        System.out.println(lph.get(PublicKey.apply(new BinaryData("03b4534b44d1da47e4b4a504a210401a583f860468dec766f507251a057594e682"))));
+        System.out.println(lph.containsKey(PublicKey.apply(new BinaryData("03b4534b44d1da47e4b4a504a210401a583f860468dec766f507251a057594e682"))));
     }
 }

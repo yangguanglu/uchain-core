@@ -1,11 +1,6 @@
 package com.uchain.common;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -94,8 +89,8 @@ public class Serializabler {
 	
 	public static byte[] readByteArray(DataInputStream is) throws IOException {
 		byte[] data = new byte[is.readInt()];
-        Arrays.fill(data, (byte)0);
-        is.read(data, 0, data.length);
+		Arrays.fill(data, (byte)0);
+		is.read(data, 0, data.length);
 		return data;
 	}
 
@@ -103,5 +98,14 @@ public class Serializabler {
 		return new String(readByteArray(is), "UTF-8");
 	}
 
+	public static<K,V> Map<K,V> readMap(DataInputStream is) throws IOException,ClassNotFoundException{
+		byte[] data = new byte[is.readInt()];
+		Arrays.fill(data, (byte)0);
+		is.read(data, 0, data.length);
+		ByteArrayInputStream byteInt=new ByteArrayInputStream(data);
+		ObjectInputStream objInt=new ObjectInputStream(byteInt);
+
+		return (Map<K,V>) objInt.readObject();
+	}
 
 }

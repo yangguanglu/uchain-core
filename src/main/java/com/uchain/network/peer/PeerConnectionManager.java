@@ -1,27 +1,5 @@
 package com.uchain.network.peer;
 
-import java.net.InetSocketAddress;
-import java.util.concurrent.TimeUnit;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.uchain.main.Settings;
-import com.uchain.network.NetworkUtil.CloseConnection;
-import com.uchain.network.NetworkUtil.ConnectedPeer;
-import com.uchain.network.NetworkUtil.Disconnected;
-import com.uchain.network.NetworkUtil.DoConnecting;
-import com.uchain.network.NetworkUtil.GetHandlerToPeerConnectionManager;
-import com.uchain.network.NetworkUtil.Handshake;
-import com.uchain.network.NetworkUtil.HandshakeDone;
-import com.uchain.network.NetworkUtil.HandshakeTimeout;
-import com.uchain.network.NetworkUtil.Handshaked;
-import com.uchain.network.NetworkUtil.Message;
-import com.uchain.network.NetworkUtil.StartInteraction;
-import com.uchain.network.message.MessagePack;
-import com.uchain.network.message.MessageType;
-import com.uchain.util.Object2Array;
-
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Cancellable;
@@ -31,7 +9,18 @@ import akka.io.Tcp.ConnectionClosed;
 import akka.io.Tcp.Received;
 import akka.io.TcpMessage;
 import akka.util.ByteString;
+import com.uchain.main.Settings;
+import com.uchain.network.NetworkUtil.*;
+import com.uchain.network.message.MessagePack;
+import com.uchain.network.message.MessageType;
+import com.uchain.util.Object2Array;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.concurrent.duration.Duration;
+
+import java.net.InetSocketAddress;
+import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
 public class PeerConnectionManager extends AbstractActor {
 	Logger log = LoggerFactory.getLogger(PeerConnectionManager.class);
@@ -143,17 +132,20 @@ public class PeerConnectionManager extends AbstractActor {
 
 	private Receive workingCycle(final ActorRef connection) {
 		return receiveBuilder().match(MessagePack.class, msg -> {
-			log.info("发送的消息:" + msg);
-			byte[] messageTypeid = Object2Array.intToByteArray(MessageType.getMessageTypeByType(msg.getMessageType()));
+			log.info("发送的消息类型:" + msg.getMessageType());
+			byte[] messageTypeid = new byte[]{(byte)MessageType.getMessageTypeByType(msg.getMessageType())};
 			byte[] bt = new byte[messageTypeid.length + msg.getData().length];
 	        System.arraycopy(messageTypeid, 0, bt, 0, messageTypeid.length);
 	        System.arraycopy(msg.getData(), 0, bt, messageTypeid.length, msg.getData().length);
+			System.out.println(Arrays.toString(bt));
 			connection.tell(TcpMessage.register(connection), getSelf());
 			connection.tell(TcpMessage.write(ByteString.fromArray(bt)), getSelf());
+			log.info("发送的消息:" + ByteString.fromArray(bt));
 		}).match(Received.class, msg -> {
 			log.info("接收的消息:" + msg);
+			ByteString data = msg.data();
 			connection.tell(TcpMessage.resumeReading(), getSelf());
-			nodeActor.tell(MessagePack.fromBytes((((Received) msg).data()).toArray(), null), getSelf());
+			nodeActor.tell(MessagePack.fromBytes(data, null), ActorRef.noSender());
 		}).build();
 	}
 	

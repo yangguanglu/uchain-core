@@ -38,9 +38,15 @@ abstract class StoreBase<K, V> {
 		this.cache=new LRUCache(cacheCapacity);
 	}
 
+	public byte[] getPrefixBytes() {
+		return prefixBytes;
+	}
 
-	
-//	def foreach(func: (K, V) => Unit): Unit = {
+	public LevelDbStorage getDb() {
+		return db;
+	}
+
+	//	def foreach(func: (K, V) => Unit): Unit = {
 //		    db.find(prefixBytes, (k, v) => {
 //		      val kData = k.drop(prefixBytes.length)
 //		      func(keyConverter.fromBytes(kData),
@@ -112,7 +118,7 @@ public void foreachForDelete(WriteBatch batch){
     	deleteBackStore(key, writeBatch);
 	    cache.delete(key);
     }
-   
+
     @SuppressWarnings("unchecked")
     public byte[] genKey(K key) {
 		byte[] keyBytes = keyConverter.toBytes(key);

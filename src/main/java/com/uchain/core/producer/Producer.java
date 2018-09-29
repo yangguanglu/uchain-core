@@ -1,22 +1,12 @@
 package com.uchain.core.producer;
 
-import java.math.BigInteger;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import akka.actor.AbstractActor;
+import akka.actor.ActorRef;
+import akka.actor.Props;
 import com.uchain.core.Block;
 import com.uchain.core.BlockChain;
 import com.uchain.core.Transaction;
-import com.uchain.core.producer.ProduceStateImpl.Failed;
-import com.uchain.core.producer.ProduceStateImpl.NotMyTurn;
-import com.uchain.core.producer.ProduceStateImpl.NotSynced;
-import com.uchain.core.producer.ProduceStateImpl.NotYet;
-import com.uchain.core.producer.ProduceStateImpl.Success;
+import com.uchain.core.producer.ProduceStateImpl.*;
 import com.uchain.crypto.BinaryData;
 import com.uchain.crypto.PrivateKey;
 import com.uchain.crypto.PublicKey;
@@ -24,15 +14,22 @@ import com.uchain.crypto.UInt256;
 import com.uchain.main.ConsensusSettings;
 import com.uchain.main.Witness;
 
-import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
-import akka.actor.Props;
+import java.math.BigInteger;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.*;
 
 public class Producer extends AbstractActor {
 
 	private ConsensusSettings settings;
 	private ActorRef peerManager;
 	private BlockChain chain;
+
+	public Producer(ConsensusSettings settings, BlockChain chain, ActorRef peerManager) {
+		this.settings = settings;
+		this.peerManager = peerManager;
+		this.chain = chain;
+	}
 
 	public static Props props(ConsensusSettings settings, BlockChain chain, ActorRef peerManager) {
 		return Props.create(Producer.class, settings, chain, peerManager);
@@ -81,13 +78,14 @@ public class Producer extends AbstractActor {
 			return new NotYet(next,now);
 		}else {
 		    Witness witness = getWitness(nextProduceTime(now, next));
-		    if(witness.getPrivkey() == null) {
+		    if("".equals(witness.getPrivkey())) {
 		    	return new NotMyTurn(witness.getName(), PublicKey.apply(new BinaryData(witness.getPubkey())));
 		    }else {
 				Collection<Transaction> valueCollection = txPool.values();
-				List<Transaction> txs = new ArrayList<Transaction>(valueCollection);
-				Block block = chain.produceBlock(PublicKey.apply(new BinaryData(witness.getPubkey())), 
+				List<Transaction> txs = new ArrayList<>(valueCollection);
+				Block block = chain.produceBlock(PublicKey.apply(new BinaryData(witness.getPubkey())),
 						PrivateKey.apply(new BinaryData(witness.getPrivkey())), nextProduceTime(now, next), txs);
+				txPool.clear();
 				return new Success(block, witness.getName(), now);
 		    }
 		}
@@ -164,7 +162,9 @@ public class Producer extends AbstractActor {
 
 	@Override
 	public Receive createReceive() {
-		return null;
+		return receiveBuilder().match(Object.class, msg -> {
+		}).build();
 	}
+
 
 }

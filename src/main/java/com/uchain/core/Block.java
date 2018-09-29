@@ -35,7 +35,7 @@ public class Block implements Identifier<UInt160>{
     }
 
     public UInt256 id(){
-        return header.get_id();
+        return header.id();
     }
 
     public int height(){
@@ -82,7 +82,7 @@ public class Block implements Identifier<UInt160>{
     
     public static List<Transaction> readSeq(DataInputStream is) throws IOException {
 		int size = is.readInt();
-		List<Transaction> transactions = new ArrayList<Transaction>(size);
+		List<Transaction> transactions = new ArrayList<Transaction>();
 		for(int i = 0; i < size; i++){
 			transactions.add(Transaction.deserialize(is));
 		}

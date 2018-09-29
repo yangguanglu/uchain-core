@@ -1,5 +1,22 @@
 package com.uchain.core;
 
+import com.uchain.common.Serializabler;
+import com.uchain.core.consensus.ForkBase;
+import com.uchain.core.consensus.ForkItem;
+import com.uchain.core.consensus.TwoTuple;
+import com.uchain.core.datastore.*;
+import com.uchain.core.datastore.keyvalue.*;
+import com.uchain.crypto.*;
+import com.uchain.main.Settings;
+import com.uchain.storage.ConnFacory;
+import com.uchain.storage.LevelDbStorage;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.val;
+import org.iq80.leveldb.WriteBatch;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -7,62 +24,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.iq80.leveldb.WriteBatch;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.uchain.common.Serializabler;
-import com.uchain.core.consensus.ForkBase;
-import com.uchain.core.consensus.ForkItem;
-import com.uchain.core.consensus.TwoTuple;
-import com.uchain.core.datastore.AccountStore;
-import com.uchain.core.datastore.BlkTxMappingStore;
-import com.uchain.core.datastore.DataStoreConstant;
-import com.uchain.core.datastore.HeadBlockStore;
-import com.uchain.core.datastore.HeaderStore;
-import com.uchain.core.datastore.HeightStore;
-import com.uchain.core.datastore.NameToAccountStore;
-import com.uchain.core.datastore.ProducerStateStore;
-import com.uchain.core.datastore.TransactionStore;
-import com.uchain.core.datastore.keyvalue.AccountValue;
-import com.uchain.core.datastore.keyvalue.BlkTxMappingValue;
-import com.uchain.core.datastore.keyvalue.BlockHeaderValue;
-import com.uchain.core.datastore.keyvalue.HeadBlock;
-import com.uchain.core.datastore.keyvalue.HeadBlockValue;
-import com.uchain.core.datastore.keyvalue.IntKey;
-import com.uchain.core.datastore.keyvalue.ProducerStatus;
-import com.uchain.core.datastore.keyvalue.ProducerStatusValue;
-import com.uchain.core.datastore.keyvalue.StringKey;
-import com.uchain.core.datastore.keyvalue.TransactionValue;
-import com.uchain.core.datastore.keyvalue.UInt160Key;
-import com.uchain.core.datastore.keyvalue.UInt256Key;
-import com.uchain.core.datastore.keyvalue.UInt256Value;
-import com.uchain.crypto.BinaryData;
-import com.uchain.crypto.CryptoUtil;
-import com.uchain.crypto.Fixed8;
-import com.uchain.crypto.MerkleTree;
-import com.uchain.crypto.PrivateKey;
-import com.uchain.crypto.PublicKey;
-import com.uchain.crypto.Scalar;
-import com.uchain.crypto.UInt160;
-import com.uchain.crypto.UInt256;
-import com.uchain.main.Settings;
-import com.uchain.storage.ConnFacory;
-import com.uchain.storage.LevelDbStorage;
-
-import lombok.Getter;
-import lombok.Setter;
-import lombok.val;
-
 @Getter
 @Setter
 public class LevelDBBlockChain implements BlockChain{
-	private static final Logger log = LoggerFactory.getLogger(ForkBase.class);
+	private static final Logger log = LoggerFactory.getLogger(LevelDBBlockChain.class);
     private LevelDbStorage db;
     private Settings settings;
     private ForkBase forkBase;
     
-    private BinaryData genesisProducer;
+    private PublicKey genesisProducer;
     private PrivateKey genesisProducerPrivKey;
     
     private HeaderStore headerStore;
@@ -73,7 +43,7 @@ public class LevelDBBlockChain implements BlockChain{
     private HeadBlockStore headBlkStore;
     private NameToAccountStore nameToAccountStore;
     private ProducerStateStore prodStateStore;
-    private BinaryData minerCoinFrom;
+    private PublicKey minerCoinFrom;
     private Fixed8 minerAward;
     private UInt160 genesisMinerAddress;
     private Transaction genesisTx;
@@ -85,22 +55,7 @@ public class LevelDBBlockChain implements BlockChain{
     	this.db = ConnFacory.getInstance(settings.getChainSettings().getChain_dbDir());
     	this.settings = settings;
     	forkBase = new ForkBase(settings);
-        HeadBlock headBlockStore = headBlkStore.get();
-        if(headBlockStore == null) reInit();
-        else init(headBlockStore);
-        
-        if (forkBase.head() == null) {
-        	TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(genesisBlock);
-        	List<ForkItem> saveBlocks = twoTuple.first;
-        	WriteBatch batch = db.getBatchWrite();
-        	saveBlocks.forEach(item -> {
-        		onConfirmed(item.getBlock());
-				batch.delete(Serializabler.toBytes(item.getBlock().id()));
-    		});
-    		db.BatchWrite(batch);
-        }
-        
-        genesisProducer = new BinaryData(settings.getChainSettings().getChain_genesis_publicKey()); // TODO: read from settings
+        genesisProducer = PublicKey.apply(new BinaryData(settings.getChainSettings().getChain_genesis_publicKey())); // TODO: read from settings
         genesisProducerPrivKey = new PrivateKey(Scalar.apply(new BinaryData(settings.getChainSettings().getChain_genesis_privateKey())));
 
         headerStore = new HeaderStore(db, 10, DataStoreConstant.HeaderPrefix,
@@ -119,16 +74,16 @@ public class LevelDBBlockChain implements BlockChain{
                 DataStoreConstant.NameToAccountIndexPrefix,new StringKey(),new UInt160Key());
         prodStateStore = new ProducerStateStore(db,  DataStoreConstant.ProducerStatePrefix,
                 new ProducerStatusValue());
-        
+
         // TODO: folkBase is todo
         // TODO: zero is not a valid pub key, need to work out other method
-        minerCoinFrom = new BinaryData(settings.getChainSettings().getChain_miner());   // 33 bytes pub key
+        minerCoinFrom = PublicKey.apply(new BinaryData(settings.getChainSettings().getChain_miner()));   // 33 bytes pub key
         minerAward = Fixed8.Ten;
-        
+
         genesisMinerAddress = UInt160.parse("f54a5851e9372b87810a8e60cdd2e7cfd80b6e31");
         genesisTx = new Transaction(TransactionType.Miner, minerCoinFrom,
                 genesisMinerAddress, "", minerAward, UInt256.Zero(), 0L,
-                CryptoUtil.array2binaryData(BinaryData.empty),CryptoUtil.array2binaryData(BinaryData.empty));
+                CryptoUtil.array2binaryData(BinaryData.empty),CryptoUtil.array2binaryData(BinaryData.empty),0x01,null);
 
         genesisBlockHeader =  BlockHeader.build(0, settings.getChainSettings().getChain_genesis_timeStamp(),
                 UInt256.Zero(), UInt256.Zero(), genesisProducer, genesisProducerPrivKey);
@@ -136,6 +91,25 @@ public class LevelDBBlockChain implements BlockChain{
         genesisBlock = new Block(genesisBlockHeader,Transaction.transactionToArrayList(genesisTx));
 
         latestHeader= genesisBlockHeader;
+
+        HeadBlock headBlockStore = headBlkStore.get();
+        if(headBlockStore == null)
+            latestHeader = reInit();
+        else
+            latestHeader = init(headBlockStore);
+
+        if (forkBase.head() == null) {
+            TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(genesisBlock);
+            if(twoTuple != null) {
+                List<ForkItem> saveBlocks = twoTuple.first;
+                WriteBatch batch = db.getBatchWrite();
+                saveBlocks.forEach(item -> {
+                    onConfirmed(item.getBlock());
+                    batch.delete(Serializabler.toBytes(item.getBlock().id()));
+                });
+                db.BatchWrite(batch);
+            }
+        }
     }
 
     
@@ -260,15 +234,18 @@ public class LevelDBBlockChain implements BlockChain{
     @Override
     public Block produceBlock(PublicKey producer, PrivateKey privateKey, long timeStamp,
                               List<Transaction> transactions){
+        UInt160 to = UInt160.fromBytes(Crypto.hash160(CryptoUtil.listTobyte(new BinaryData("0345ffbf8dc9d8ff15785e2c228ac48d98d29b834c2e98fb8cfe6e71474d7f6322").getData())));
         val minerTx = new Transaction(TransactionType.Miner, minerCoinFrom,
-                producer.pubKeyHash(), "", minerAward, UInt256.Zero(), new Long((long)(latestHeader.getIndex() + 1)),
-                CryptoUtil.array2binaryData(BinaryData.empty), CryptoUtil.array2binaryData(BinaryData.empty));
+                to, "", minerAward, UInt256.Zero(), new Long((latestHeader.getIndex() + 1)),
+                new BinaryData(new ArrayList<>()), new BinaryData(new ArrayList<>()),0x01,null);
         val txs = getUpdateTransaction(minerTx, transactions);
-        val merkleRoot = MerkleTree.root(transactions.stream().map(v -> v.id()).collect(Collectors.toList()));
-        val header = BlockHeader.build(latestHeader.getIndex() + 1, timeStamp, merkleRoot,
-                latestHeader.id(), producer.toBin(), privateKey);
+        val merkleRoot = MerkleTree.root(txs.stream().map(v -> v.id()).collect(Collectors.toList()));
+        ForkItem forkHead = forkBase.head();
+        System.out.println("forkHeadforkHeadforkHead="+forkHead.getBlock().height());
+        val header = BlockHeader.build(forkHead.getBlock().height() + 1, timeStamp, merkleRoot,
+                forkHead.getBlock().id(), producer, privateKey);
         val block = new Block(header, txs);
-        TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(genesisBlock);
+        TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(block);
 		if (twoTuple.second) {
 			return block;
 		} else {
@@ -293,10 +270,19 @@ public class LevelDBBlockChain implements BlockChain{
     
     @Override
     public boolean tryInsertBlock(Block block) {
-        if (verifyBlock(block))
-            if (saveBlockToStores(block))
-                return true;
-        return false;
+//        if (verifyBlock(block))
+//            if (saveBlockToStores(block))
+//                return true;
+//        return false;
+        TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(block);
+        if(twoTuple != null) {
+            List<ForkItem> forkItem = twoTuple.first;
+            for (int i = 0; i < forkItem.size(); i++) {
+                onConfirmed(forkItem.get(i).getBlock());
+            }
+            return true;
+        }else
+            return false;
     }
 
     @Override
@@ -433,7 +419,7 @@ public class LevelDBBlockChain implements BlockChain{
             return false;
         if (!header.getPrevBlock().equals(latestHeader.id()))
             return false;
-        if (header.getProducer().getLength() != 33)
+        if (header.getProducer().toBin().getLength() != 33)
             return false;
         if (!header.verifySig())
             return false;
