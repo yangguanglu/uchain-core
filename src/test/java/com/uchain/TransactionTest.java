@@ -1,20 +1,17 @@
 package com.uchain;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-
-import com.uchain.crypto.*;
-import org.junit.Test;
-
 import com.uchain.common.Serializabler;
 import com.uchain.core.Transaction;
 import com.uchain.core.TransactionType;
-
+import com.uchain.core.consensus.SortedMultiMap2;
+import com.uchain.core.consensus.SortedMultiMap2Iterator;
+import com.uchain.core.consensus.ThreeTuple;
+import com.uchain.crypto.*;
 import lombok.val;
+import org.junit.Test;
+
+import java.io.*;
+import java.util.ArrayList;
 
 public class TransactionTest {
 	@Test
@@ -58,5 +55,37 @@ public class TransactionTest {
 		assert(tx.getSignature().getData().equals(transactionDeserializer.getSignature().getData()));
 		assert(tx.getVersion() == transactionDeserializer.getVersion());
 
+
+		SortedMultiMap2<Integer, Integer, UInt256> sortedMultiMap2 = new SortedMultiMap2<>(
+				"asc", "reverse");
+		UInt256 ss0 = UInt256.fromBytes(Crypto.hash256(("test"+0).getBytes("UTF-8")));
+		UInt256 ss1 = UInt256.fromBytes(Crypto.hash256(("test"+0).getBytes("UTF-8")));
+		UInt256 ss2 = UInt256.fromBytes(Crypto.hash256(("test"+0).getBytes("UTF-8")));
+		UInt256 ss4 = UInt256.fromBytes(Crypto.hash256(("test"+0).getBytes("UTF-8")));
+		UInt256 ss5 = UInt256.fromBytes(Crypto.hash256(("test"+0).getBytes("UTF-8")));
+		UInt256 ss6 = UInt256.fromBytes(Crypto.hash256(("test"+0).getBytes("UTF-8")));
+
+		sortedMultiMap2.put(0, 0, ss0);
+		sortedMultiMap2.remove(0, 0);
+		sortedMultiMap2.put(0, 1, ss0);
+		sortedMultiMap2.head();
+		sortedMultiMap2.put(1, 0, ss1);
+//		System.out.println("1111111");
+		sortedMultiMap2.head();
+		sortedMultiMap2.remove(1, 0);
+		sortedMultiMap2.put(1, 1, ss1);
+		//sortedMultiMap2.put(2, false, null)
+		sortedMultiMap2.head();
+		sortedMultiMap2.remove(0, 1);
+		System.out.println(sortedMultiMap2.size());
+//		sortedMultiMap2.remove(2, false);
+//		sortedMultiMap2.put(2, true, ss2);
+//		System.out.println(sortedMultiMap2.size());
+//		System.out.println(sortedMultiMap2.get(2,true));
+		SortedMultiMap2Iterator<Integer, Integer, UInt256> a = sortedMultiMap2.iterator();
+		while (a.hasNext()){
+			ThreeTuple<Integer, Integer, UInt256> b = a.next();
+			System.out.println(b.first+"  "+b.second);
+		}
 	}
 }

@@ -6,10 +6,14 @@ public class APP {
         while (true) {
             Scanner scanner = new Scanner(System.in);
             String command = scanner.nextLine().toLowerCase().trim();
-            int checkResult = CommandHandler.checkCommand(command);
+//            if(command.contains("help")){
+//                CommandHandler.readResourceTxt("help.txt");
+//                return;
+//            }
+            int checkResult = new CommandHandler().checkCommand(command);
             switch (checkResult){
                 case 200:{
-                    String result = CommandHandler.sendCommandToServer(command);
+                    String result = new CommandHandler().sendCommandToServer(command);
                     System.out.println(result);
                     break;
                 }

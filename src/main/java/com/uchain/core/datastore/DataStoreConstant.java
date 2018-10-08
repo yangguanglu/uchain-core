@@ -28,4 +28,9 @@ public class DataStoreConstant {
 	public static final byte[] ProducerStatePrefix = new byte[] { (byte) StoreType.getStoreType(StoreType.Index),
 			(byte) StateType.getStateType(StateType.Producer) };
 
+	public static final byte[] BlockPrefix = new byte[]{(byte) StoreType.getStoreType(StoreType.Data),
+			(byte) DataType.getDataType(DataType.Block)};
+
+    public static final byte[] ForkItemPrefix = new byte[] { (byte) StoreType.getStoreType(StoreType.Data),
+            (byte) DataType.getDataType(DataType.ForkItem) };
 }

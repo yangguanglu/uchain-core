@@ -1,0 +1,11 @@
+APEX NETWORK
+
+name            parameter                      description
+getblocks       []                             list block
+sendrawtransaction [-privkey,-address,-assetId,-amount,-nonce] transfer money
+getblock        [-id]                          get block by id
+                [-h]                           get block by height
+gettx           [-id]                          get transaction
+importprivkey   [-key]                         import private key
+getblockcount   []                             get block count
+produceblock    []                             produce block

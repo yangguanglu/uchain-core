@@ -1,7 +1,7 @@
 package com.uchain.core.datastore;
 
 public enum DataType {
-	BlockHeader(0x00), Transaction(0x01), Account(0x02);
+	BlockHeader(0x00), Transaction(0x01), Account(0x02), Session(0x03), Block(0x04), ForkItem(0x05);
 
 	private int value;
 

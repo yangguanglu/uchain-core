@@ -40,7 +40,7 @@ public class LevelDBBlockChain implements BlockChain{
     private TransactionStore txStore;
     private AccountStore accountStore;
     private BlkTxMappingStore blkTxMappingStore;
-    private HeadBlockStore headBlkStore;
+    private HeadBlockDataStore headBlkStore;
     private NameToAccountStore nameToAccountStore;
     private ProducerStateStore prodStateStore;
     private PublicKey minerCoinFrom;
@@ -68,7 +68,7 @@ public class LevelDBBlockChain implements BlockChain{
                 new UInt160Key(), new AccountValue());
         blkTxMappingStore = new BlkTxMappingStore(db, 10,
                 DataStoreConstant.BlockIdToTxIdIndexPrefix, new UInt256Key(), new BlkTxMappingValue());
-        headBlkStore = new HeadBlockStore(db, DataStoreConstant.HeadBlockStatePrefix,
+        headBlkStore = new HeadBlockDataStore(db, DataStoreConstant.HeadBlockStatePrefix,
                 new HeadBlockValue());
         nameToAccountStore = new NameToAccountStore(db, 10,
                 DataStoreConstant.NameToAccountIndexPrefix,new StringKey(),new UInt160Key());
@@ -241,12 +241,11 @@ public class LevelDBBlockChain implements BlockChain{
         val txs = getUpdateTransaction(minerTx, transactions);
         val merkleRoot = MerkleTree.root(txs.stream().map(v -> v.id()).collect(Collectors.toList()));
         ForkItem forkHead = forkBase.head();
-        System.out.println("forkHeadforkHeadforkHead="+forkHead.getBlock().height());
         val header = BlockHeader.build(forkHead.getBlock().height() + 1, timeStamp, merkleRoot,
                 forkHead.getBlock().id(), producer, privateKey);
         val block = new Block(header, txs);
         TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(block);
-		if (twoTuple.second) {
+		if (twoTuple!= null && twoTuple.second) {
 			return block;
 		} else {
 			return null;
@@ -270,10 +269,6 @@ public class LevelDBBlockChain implements BlockChain{
     
     @Override
     public boolean tryInsertBlock(Block block) {
-//        if (verifyBlock(block))
-//            if (saveBlockToStores(block))
-//                return true;
-//        return false;
         TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(block);
         if(twoTuple != null) {
             List<ForkItem> forkItem = twoTuple.first;

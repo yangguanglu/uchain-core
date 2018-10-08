@@ -9,9 +9,9 @@ class MapKeyComparator<K> implements Comparator<K>{
 			int value1 = ((Integer) k1).intValue(); 
 			int value2 = ((Integer) k2).intValue(); 
 			if(value1>=value2) {
-				return -1;
-			}else {
 				return 1;
+			}else {
+				return -1;
 			}
 		}else if (k1 instanceof String) {
 		    String s1 = (String) k1;

@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 import scala.concurrent.duration.Duration;
 
 import java.net.InetSocketAddress;
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 public class PeerConnectionManager extends AbstractActor {
@@ -132,17 +131,16 @@ public class PeerConnectionManager extends AbstractActor {
 
 	private Receive workingCycle(final ActorRef connection) {
 		return receiveBuilder().match(MessagePack.class, msg -> {
-			log.info("发送的消息类型:" + msg.getMessageType());
+//			log.info("发送的消息类型:" + msg.getMessageType());
 			byte[] messageTypeid = new byte[]{(byte)MessageType.getMessageTypeByType(msg.getMessageType())};
 			byte[] bt = new byte[messageTypeid.length + msg.getData().length];
 	        System.arraycopy(messageTypeid, 0, bt, 0, messageTypeid.length);
 	        System.arraycopy(msg.getData(), 0, bt, messageTypeid.length, msg.getData().length);
-			System.out.println(Arrays.toString(bt));
 			connection.tell(TcpMessage.register(connection), getSelf());
 			connection.tell(TcpMessage.write(ByteString.fromArray(bt)), getSelf());
-			log.info("发送的消息:" + ByteString.fromArray(bt));
+//			log.info("发送的消息:" + ByteString.fromArray(bt));
 		}).match(Received.class, msg -> {
-			log.info("接收的消息:" + msg);
+//			log.info("接收的消息:" + msg);
 			ByteString data = msg.data();
 			connection.tell(TcpMessage.resumeReading(), getSelf());
 			nodeActor.tell(MessagePack.fromBytes(data, null), ActorRef.noSender());

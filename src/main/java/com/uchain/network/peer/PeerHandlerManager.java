@@ -1,31 +1,22 @@
 package com.uchain.network.peer;
 
+import akka.actor.AbstractActor;
+import akka.actor.ActorRef;
+import akka.actor.Props;
+import akka.io.Tcp;
+import com.uchain.main.Settings;
+import com.uchain.network.NetworkUtil.*;
+import com.uchain.network.message.BlockMessageImpl.BlockMessage;
+import com.uchain.network.message.BlockMessageImpl.InventoryMessage;
+import com.uchain.network.message.MessagePack;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.uchain.main.Settings;
-import com.uchain.network.NetworkUtil.CloseConnection;
-import com.uchain.network.NetworkUtil.ConnectedPeer;
-import com.uchain.network.NetworkUtil.Disconnected;
-import com.uchain.network.NetworkUtil.DoConnecting;
-import com.uchain.network.NetworkUtil.Handshaked;
-import com.uchain.network.NetworkUtil.Message;
-import com.uchain.network.NetworkUtil.PeerHandler;
-import com.uchain.network.NetworkUtil.StartInteraction;
-import com.uchain.network.message.BlockMessageImpl.BlockMessage;
-import com.uchain.network.message.BlockMessageImpl.InventoryMessage;
-import com.uchain.network.message.MessagePack;
-
-import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
-import akka.actor.Props;
-import akka.io.Tcp;
 
 public class PeerHandlerManager extends AbstractActor{
 	private static Logger log = LoggerFactory.getLogger(PeerHandlerManager.class);
@@ -83,11 +74,10 @@ public class PeerHandlerManager extends AbstractActor{
 		    		  peer.getHandlerRef().tell(new CloseConnection(), getSelf());
 		    	  }
 		    	  connectedPeers.put(peer.getSocketAddress(), peer);
-		          log.info("更新本节点连接的节点="+connectedPeers);
+//		          log.info("更新本节点连接的节点="+connectedPeers);
 	          })
 		      .match(PeerHandler.class, msg -> {
 		    	  ActorRef handler = msg.getHandlerRef();
-		    	  log.info("连接成功后获取的PeerConnectionManager链接="+handler);
 		    	  Message message = new Message("1","message_test");
 		          //获取远程hangler，测发送消息
 		          handler.tell(message, getSelf());

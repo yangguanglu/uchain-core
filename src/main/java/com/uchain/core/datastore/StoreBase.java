@@ -104,6 +104,16 @@ public void foreachForDelete(WriteBatch batch){
     		return item;
     	}
     }
+//
+//    public V get(){
+//		if (cache == null) {
+//			val bytes = db.get(prefixBytes);
+//			if (!(bytes.length == 0)) {
+//				cache = valConverter.fromBytes(bytes);
+//			}
+//		}
+//		return cache;
+//	}
     
     public boolean set(K key,V value,WriteBatch writeBatch) {
     	if (setBackStore(key, value, writeBatch)) {
@@ -160,4 +170,5 @@ public void foreachForDelete(WriteBatch batch){
   	      db.delete(genKey(key));
   	    }
     }
+
 }

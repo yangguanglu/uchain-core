@@ -1,20 +1,13 @@
 package com.uchain.core.producer;
 
-import java.time.Instant;
-
+import akka.actor.ActorRef;
+import com.uchain.core.Block;
+import com.uchain.core.producer.ProduceStateImpl.*;
+import com.uchain.network.message.BlockMessageImpl.BlockMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.uchain.core.Block;
-import com.uchain.core.producer.ProduceStateImpl.Failed;
-import com.uchain.core.producer.ProduceStateImpl.NotMyTurn;
-import com.uchain.core.producer.ProduceStateImpl.NotSynced;
-import com.uchain.core.producer.ProduceStateImpl.NotYet;
-import com.uchain.core.producer.ProduceStateImpl.Success;
-import com.uchain.core.producer.ProduceStateImpl.TimeMissed;
-import com.uchain.network.message.BlockMessageImpl.BlockMessage;
-
-import akka.actor.ActorRef;
+import java.time.Instant;
 
 /**
  * 启动线程，生产区块，并发送

@@ -1,14 +1,15 @@
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class CommandHandler {
 
-    static String url = "http://127.0.0.1:1943";
+    static String url = "http://172.16.12.43:1943";
 
-    public static String sendCommandToServer(String command){
+    public String sendCommandToServer(String command){
         String httpResponse = "";
         try {
+            if(command.contains("help")) return Help.help;
             Command commandToSend = constructCommandToSend(command);
             String path = commandToSend.path;
             String body = DataProcessor.JsonMapperTo(commandToSend.commandSuffixes);
@@ -20,7 +21,23 @@ public class CommandHandler {
         return httpResponse;
     }
 
-    public static Command constructCommandToSend(String command){
+    public String readResourceTxt(String file){
+            StringBuilder result = new StringBuilder();
+            try {
+                //String filePath = this.getClass().getClassLoader().getResource(file).getFile();
+                BufferedReader bfr = new BufferedReader(new InputStreamReader(new FileInputStream(new File("../../resources/help.txt")), "UTF-8"));
+                String lineTxt = null;
+                while ((lineTxt = bfr.readLine()) != null) {
+                    result.append(lineTxt).append("\n");
+                }
+                bfr.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return result.toString();
+    }
+
+    public Command constructCommandToSend(String command){
         String[] commandSplits = command.trim().split(" ");
         if(commandSplits.length > 1 && commandSplits.length % 2 ==1) {
             String path = commandSplits[0];
@@ -31,7 +48,7 @@ public class CommandHandler {
         else return new Command(command, new ArrayList<>());
     }
 
-    public static  int checkCommand(String command){
+    public int checkCommand(String command){
         if(command.isEmpty()) return 404;
         if(command.split("\\s+").length > 1 && command.matches("^[a-zA-Z].*-.*")){
             if(!checkCommandHeadIsCorrect(command)) return 404;
@@ -42,18 +59,18 @@ public class CommandHandler {
         else return 400;
     }
 
-    private static boolean checkCommandHeadIsCorrect(String command){
+    private  boolean checkCommandHeadIsCorrect(String command){
         String commandHead = command.split("\\-")[0].trim();
         return supportedCommand.contains(commandHead);
     }
 
-    private static boolean checkCommandValid(String command){
+    private boolean checkCommandValid(String command){
         String commandHead = command.split("\\-")[0].trim();
         String commandParamsSuffix = getCommandSuffix(command);
         return checkSpecifiedCommandIsCorrect(commandParamsSuffix.split("\\s+"), commandHead);
     }
 
-    private static boolean checkSpecifiedCommandIsCorrect(String[] paramsSuffix, String commandHead){
+    private boolean checkSpecifiedCommandIsCorrect(String[] paramsSuffix, String commandHead){
         boolean validateAllParamsCorrect = true;
         int cmdLength = paramsSuffix.length;
         if(cmdLength % 2 == 0){
@@ -68,7 +85,7 @@ public class CommandHandler {
         return validateAllParamsCorrect;
     }
 
-    public static List<CommandSuffix> constructCommandSuffixesList(String[] paramsSuffix){
+    public List<CommandSuffix> constructCommandSuffixesList(String[] paramsSuffix){
         int cmdLength = paramsSuffix.length;
         List<CommandSuffix> commandSuffixes = new ArrayList<>(cmdLength);
         for(int params = 0; params < cmdLength; params++){
@@ -78,21 +95,21 @@ public class CommandHandler {
         return commandSuffixes;
     }
 
-    private static boolean validate(CommandSuffix commandSuffix, String commandHead){
+    private boolean validate(CommandSuffix commandSuffix, String commandHead){
         return true;
     }
 
-    private static String getCommandPrefix(String command){
+    private String getCommandPrefix(String command){
         return command.split("\\-")[0].trim();
     }
 
-    private static String getCommandSuffix(String command){
+    private String getCommandSuffix(String command){
         return command.replaceAll(getCommandPrefix(command), "").trim();
     }
 
-    static List<String> supportedCommand  = getAllSupportedCommand();
+    public List<String> supportedCommand  = getAllSupportedCommand();
 
-    private static List<String> getAllSupportedCommand(){
+    private List<String> getAllSupportedCommand(){
         ArrayList<String> supportedCommandList = new ArrayList<String>(20);
         supportedCommandList.add("getblocks");
         supportedCommandList.add("getblock");
@@ -103,7 +120,23 @@ public class CommandHandler {
         supportedCommandList.add("importprivkey");
         supportedCommandList.add("quit");
         supportedCommandList.add("exit");
+        supportedCommandList.add("help");
         return supportedCommandList;
     }
 
+
+}
+
+class Help{
+    static String help = "APEX NETWORK\n" +
+            "\n" +
+            "name            parameter                      description\n" +
+            "getblocks       []                             list block\n" +
+            "sendrawtransaction [-privkey,-address,-assetId,-amount,-nonce] transfer money\n" +
+            "getblock        [-id]                          get block by id\n" +
+            "                [-h]                           get block by height\n" +
+            "gettx           [-id]                          get transaction\n" +
+            "importprivkey   [-key]                         import private key\n" +
+            "getblockcount   []                             get block count\n" +
+            "produceblock    []                             produce block";
 }
