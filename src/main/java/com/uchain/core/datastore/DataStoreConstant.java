@@ -33,4 +33,7 @@ public class DataStoreConstant {
 
     public static final byte[] ForkItemPrefix = new byte[] { (byte) StoreType.getStoreType(StoreType.Data),
             (byte) DataType.getDataType(DataType.ForkItem) };
+
+    public static final byte[] LatestConfirmedStatePrefix = new byte[] { (byte) StoreType.getStoreType(StoreType.Index),
+            (byte) StateType.getStateType(StateType.LatestConfirmed) };
 }

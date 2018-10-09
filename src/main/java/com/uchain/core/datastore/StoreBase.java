@@ -1,21 +1,12 @@
 package com.uchain.core.datastore;
 
-import org.iq80.leveldb.DBIterator;
-import org.iq80.leveldb.ReadOptions;
-import org.iq80.leveldb.WriteBatch;
-
 import com.uchain.common.Cache;
 import com.uchain.common.LRUCache;
 import com.uchain.core.datastore.keyvalue.Converter;
-import com.uchain.crypto.UIntBase;
+import com.uchain.storage.Batch;
 import com.uchain.storage.LevelDbStorage;
-
-import lombok.val;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.Arrays;
 
 abstract class StoreBase<K, V> {
 
@@ -53,41 +44,8 @@ abstract class StoreBase<K, V> {
 //		        valConverter.fromBytes(v))
 //		    })
 //		  }
-public void foreachForDelete(WriteBatch batch){
-	DBIterator iterator = db.db.iterator();
-	try {
-		iterator.seek(prefixBytes);
-		while (iterator.hasNext()) {
-			val peekNextEntry = iterator.peekNext();
-			val getPrefixBytes = new byte[prefixBytes.length];
-			System.arraycopy(peekNextEntry.getKey(), 0, getPrefixBytes,0,prefixBytes.length);
-			val keyIsSame = (peekNextEntry.getKey().length < prefixBytes.length || !new String(prefixBytes).equals(new String(getPrefixBytes)));
-			val keys = keyConverter.fromBytes(getPrefixBytes);
-			delete((K) keys, batch);
-			if(keyIsSame) iterator.next();
-			else break;
-		}
-	}
-	catch (Exception e) {
-		log.error("find", e);
-	} finally {
-		try {
-			iterator.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-}
     public boolean contains(K key) {
-    	if(cache.contains(key)) {
-    		return true;
-    	}else {
-    		if(getFromBackStore(key)!=null) {
-    			return true;
-    		}else {
-    			return false;
-    		}
-    	}
+    	return  cache.contains(key) || backContains(key);
     }
 	
     public V get(K key) {
@@ -97,39 +55,25 @@ public void foreachForDelete(WriteBatch batch){
     		if(item == null) {
     			return null;
     		}else {
-    			cache.set(key, item);
     			return item;
     		}
     	}else {
     		return item;
     	}
     }
-//
-//    public V get(){
-//		if (cache == null) {
-//			val bytes = db.get(prefixBytes);
-//			if (!(bytes.length == 0)) {
-//				cache = valConverter.fromBytes(bytes);
-//			}
-//		}
-//		return cache;
-//	}
-    
-    public boolean set(K key,V value,WriteBatch writeBatch) {
-    	if (setBackStore(key, value, writeBatch)) {
-    		cache.set(key, value);
+
+    public boolean set(K key, V value, Batch batch) {
+    	if (setBackStore(key, value, batch)) {
     		return true;
     	}else {
     		return false;
     	}
     }
     
-    public void delete(K key,WriteBatch writeBatch) {
-    	deleteBackStore(key, writeBatch);
-	    cache.delete(key);
+    public void delete(K key,Batch batch) {
+    	deleteBackStore(key, batch);
     }
 
-    @SuppressWarnings("unchecked")
     public byte[] genKey(K key) {
 		byte[] keyBytes = keyConverter.toBytes(key);
 		byte[] keyBytesAddPrefix =  new byte[prefixBytes.length + keyBytes.length];
@@ -143,9 +87,12 @@ public void foreachForDelete(WriteBatch batch){
 		return keyBytesAddPrefix;
     }
 
+    private boolean backContains(K key){
+        return db.containsKey(genKey(key));
+    }
+
     public V getFromBackStore(K key) {
-    	val opt = new ReadOptions().fillCache(false);
-    	byte[] value = db.get(genKey(key), opt);
+    	byte[] value = db.get(genKey(key));
     	if(value!=null) {
     		return (V) valConverter.fromBytes(value);
     	}else {
@@ -153,22 +100,11 @@ public void foreachForDelete(WriteBatch batch){
     	}
     }
     
-    public boolean setBackStore(K key,V value,WriteBatch batch) {
-		if(batch != null){
-			batch.put(genKey(key), valConverter.toBytes(value));
-			return true;
-		}
-		else {
-			return db.set(genKey(key), valConverter.toBytes(value));
-		}
+    public boolean setBackStore(K key,V value,Batch batch) {
+        return db.set(genKey(key), valConverter.toBytes(value), batch);
     }
    
-    public void deleteBackStore(K key,WriteBatch batch) {
-    	if (batch != null) {
-  	      batch.delete(genKey(key));
-  	    } else {
-  	      db.delete(genKey(key));
-  	    }
+    public void deleteBackStore(K key,Batch batch) {
+        db.delete(genKey(key), batch);
     }
-
 }

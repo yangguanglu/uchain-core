@@ -9,8 +9,8 @@ package com.uchain.core.datastore;
  * @Version: 1.0
  * *************************************************************/
 
+import com.uchain.storage.Batch;
 import com.uchain.storage.LevelDbStorage;
-import org.iq80.leveldb.WriteBatch;
 
 
 public class Session {
@@ -22,18 +22,22 @@ public class Session {
         this.db = db;
     }
 
-    public WriteBatch onSet(byte[] key, byte[] v, WriteBatch batch) throws Exception{
-        WriteBatch newBatch = originOrNew(batch);
+    public Batch onSet(byte[] key, byte[] v, Batch batch) throws Exception{
+        Batch newBatch = originOrNew(batch);
         newBatch.put(key,v);
         return newBatch;
     }
 
-    protected WriteBatch originOrNew(WriteBatch batch){
-        return batch == null?db.getBatchWrite():batch;
+    protected Batch originOrNew(Batch batch){
+        if (batch == null){
+            return new Batch();
+        } else {
+            return batch;
+        }
     }
 
-    public WriteBatch onDelete(byte[] key,WriteBatch batch){
-        WriteBatch newBatch = originOrNew(batch);
+    public Batch onDelete(byte[] key,Batch batch){
+        Batch newBatch = originOrNew(batch);
         newBatch.delete(key);
         return newBatch;
     }

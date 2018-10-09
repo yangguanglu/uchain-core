@@ -10,6 +10,7 @@ package com.uchain.core.datastore;
  * *************************************************************/
 
 import com.uchain.core.datastore.keyvalue.IntKey;
+import com.uchain.storage.Batch;
 import com.uchain.storage.LevelDbStorage;
 import lombok.val;
 import org.iq80.leveldb.DBIterator;
@@ -18,7 +19,6 @@ import org.iq80.leveldb.WriteBatch;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class SessionManger {
@@ -103,7 +103,7 @@ public class SessionManger {
             return true;
         }
     }
-    public WriteBatch beginSet(byte[] k, byte[] v, WriteBatch batch) throws Exception{
+    public Batch beginSet(byte[] k, byte[] v, Batch batch) throws Exception{
         Session session = sessions.get(sessions.size());
         if(null == session){
             session = defaultSession;
@@ -113,7 +113,7 @@ public class SessionManger {
 
     }
 
-    public  WriteBatch beginDelete(byte[] k,WriteBatch batch) throws Exception{
+    public Batch beginDelete(byte[] k,Batch batch){
         Session session = sessions.get(sessions.size());
         if(null == session){
             session = defaultSession;

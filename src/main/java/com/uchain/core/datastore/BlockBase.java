@@ -5,11 +5,11 @@ import com.uchain.core.BlockHeader;
 import com.uchain.core.datastore.keyvalue.*;
 import com.uchain.crypto.UInt256;
 import com.uchain.main.BlockBaseSetting;
+import com.uchain.storage.Batch;
 import com.uchain.storage.ConnFacory;
 import com.uchain.storage.LevelDbStorage;
 import lombok.Getter;
 import lombok.Setter;
-import org.iq80.leveldb.WriteBatch;
 
 @Getter
 @Setter
@@ -38,11 +38,10 @@ public class BlockBase{
 
     public  void add (Block block){
         if (head().id().toString().equals(block.prev().toString())){
-            WriteBatch batchWrite = db.getBatchWrite();
-            blockStore.set(block.id(), block, batchWrite);
-            heightStore.set(block.height(), block.id(), batchWrite);
-            headBlkStore.set(block.getHeader(), batchWrite);
-            db.BatchWrite(batchWrite);
+            Batch batch = new Batch();
+            blockStore.set(block.id(), block, batch);
+            heightStore.set(block.height(), block.id(), batch);
+            headBlkStore.set(block.getHeader(), batch);
         }
         else throw new IllegalArgumentException("requirement failed");
     }
