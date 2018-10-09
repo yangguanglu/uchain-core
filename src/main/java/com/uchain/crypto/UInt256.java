@@ -61,13 +61,13 @@ public class UInt256 extends UIntBase {
         return fromBytes(data);
     }
 
-    @Override
-    public int hashCode() {
-        return super.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        return super.equals(o);
-    }
+//    @Override
+//    public int hashCode() {
+//        return super.hashCode();
+//    }
+//
+//    @Override
+//    public boolean equals(Object o) {
+//        return super.equals(o);
+//    }
 }

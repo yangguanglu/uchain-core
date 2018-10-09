@@ -14,11 +14,11 @@ import com.uchain.crypto.UInt256;
 import com.uchain.exceptions.UnExpectedError;
 import com.uchain.main.Settings;
 import com.uchain.main.Witness;
+import com.uchain.storage.Batch;
 import com.uchain.storage.ConnFacory;
 import com.uchain.storage.LevelDbStorage;
 import lombok.Getter;
 import lombok.Setter;
-import org.iq80.leveldb.WriteBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -174,7 +174,7 @@ public class ForkBase {
 	private void switchAdd(ForkItem from,ForkItem to) {
 		TwoTuple<List<ForkItem>, List<ForkItem>> twoTuple = getForks(from, to);
 		List<ForkItem> items = Lists.newArrayList();
-		WriteBatch batch = db.getBatchWrite();
+		Batch batch = new Batch();
 		twoTuple.first.forEach(item -> {
 			ForkItem newItem = new ForkItem(item.getBlock(),item.getLastProducerHeight(),false);
 			batch.put(Serializabler.toBytes(newItem.getBlock().id()), newItem.toBytes());
@@ -187,7 +187,7 @@ public class ForkBase {
             forkStore.set(newItem.getBlock().id(), newItem, batch);
             items.add(item);
         });
-        db.BatchWrite(batch);
+//        db.BatchWrite(batch);
         items.forEach(item -> updateIndex(item));
         //onSwitch(originFork, newFork);
 	}
@@ -231,9 +231,9 @@ public class ForkBase {
 					items.add(item);
 					saveBlocks.add(item);
 				}
-				WriteBatch batch = db.getBatchWrite();
+				Batch batch = new Batch();
                 forkStore.delete(item.getBlock().id(), batch);
-				db.BatchWrite(batch);
+//				db.BatchWrite(batch);
                 deleteIndex(item);
             }
 		}

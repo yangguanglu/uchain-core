@@ -1,11 +1,11 @@
 package com.uchain.core;
 
-import com.uchain.common.Serializabler;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.uchain.core.consensus.ForkBase;
 import com.uchain.core.consensus.ForkItem;
-import com.uchain.core.consensus.TwoTuple;
 import com.uchain.core.datastore.*;
-import com.uchain.core.datastore.keyvalue.*;
+import com.uchain.core.datastore.keyvalue.ProducerStatus;
 import com.uchain.crypto.*;
 import com.uchain.main.Settings;
 import com.uchain.storage.ConnFacory;
@@ -13,15 +13,12 @@ import com.uchain.storage.LevelDbStorage;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.val;
-import org.iq80.leveldb.WriteBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Getter
@@ -51,6 +48,11 @@ public class LevelDBBlockChain implements BlockChain{
     private Block genesisBlock;
     private BlockHeader latestHeader;
     private ProducerStatus latestProdState;
+    private BlockBase blockBase;
+    private DataBase dataBase;
+    private List<Transaction> pendingTxs;
+    private List<Transaction> unapplyTxs;
+
     LevelDBBlockChain(Settings settings){
     	this.db = ConnFacory.getInstance(settings.getChainSettings().getChain_dbDir());
     	this.settings = settings;
@@ -58,22 +60,8 @@ public class LevelDBBlockChain implements BlockChain{
         genesisProducer = PublicKey.apply(new BinaryData(settings.getChainSettings().getChain_genesis_publicKey())); // TODO: read from settings
         genesisProducerPrivKey = new PrivateKey(Scalar.apply(new BinaryData(settings.getChainSettings().getChain_genesis_privateKey())));
 
-        headerStore = new HeaderStore(db, 10, DataStoreConstant.HeaderPrefix,
-                new UInt256Key(), new BlockHeaderValue());
-        heightStore = new HeightStore(db, 10, DataStoreConstant.HeightToIdIndexPrefix,
-                new IntKey(), new UInt256Value());
-        txStore = new TransactionStore(db, 10, DataStoreConstant.TxPrefix,
-                new UInt256Key(), new TransactionValue());
-        accountStore = new AccountStore(db, 10, DataStoreConstant.AccountPrefix,
-                new UInt160Key(), new AccountValue());
-        blkTxMappingStore = new BlkTxMappingStore(db, 10,
-                DataStoreConstant.BlockIdToTxIdIndexPrefix, new UInt256Key(), new BlkTxMappingValue());
-        headBlkStore = new HeadBlockDataStore(db, DataStoreConstant.HeadBlockStatePrefix,
-                new HeadBlockValue());
-        nameToAccountStore = new NameToAccountStore(db, 10,
-                DataStoreConstant.NameToAccountIndexPrefix,new StringKey(),new UInt160Key());
-        prodStateStore = new ProducerStateStore(db,  DataStoreConstant.ProducerStatePrefix,
-                new ProducerStatusValue());
+        blockBase = new BlockBase(settings.getBlockBaseSetting());
+        dataBase = new DataBase(settings.getDataBaseSetting());
 
         // TODO: folkBase is todo
         // TODO: zero is not a valid pub key, need to work out other method
@@ -92,31 +80,69 @@ public class LevelDBBlockChain implements BlockChain{
 
         latestHeader= genesisBlockHeader;
 
-        HeadBlock headBlockStore = headBlkStore.get();
-        if(headBlockStore == null)
-            latestHeader = reInit();
-        else
-            latestHeader = init(headBlockStore);
+        List<Transaction> pendingTxs = Lists.newArrayList();  // TODO: save to DB?
+        List<Transaction> unapplyTxs = Lists.newArrayList();  // TODO: save to DB?
 
-        if (forkBase.head() == null) {
-            TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(genesisBlock);
-            if(twoTuple != null) {
-                List<ForkItem> saveBlocks = twoTuple.first;
-                WriteBatch batch = db.getBatchWrite();
-                saveBlocks.forEach(item -> {
-                    onConfirmed(item.getBlock());
-                    batch.delete(Serializabler.toBytes(item.getBlock().id()));
-                });
-                db.BatchWrite(batch);
-            }
-        }
+        populate();
+
+//        headerStore = new HeaderStore(db, 10, DataStoreConstant.HeaderPrefix,
+//                new UInt256Key(), new BlockHeaderValue());
+//        heightStore = new HeightStore(db, 10, DataStoreConstant.HeightToIdIndexPrefix,
+//                new IntKey(), new UInt256Value());
+//        txStore = new TransactionStore(db, 10, DataStoreConstant.TxPrefix,
+//                new UInt256Key(), new TransactionValue());
+//        accountStore = new AccountStore(db, 10, DataStoreConstant.AccountPrefix,
+//                new UInt160Key(), new AccountValue());
+//        blkTxMappingStore = new BlkTxMappingStore(db, 10,
+//                DataStoreConstant.BlockIdToTxIdIndexPrefix, new UInt256Key(), new BlkTxMappingValue());
+//        headBlkStore = new HeadBlockDataStore(db, DataStoreConstant.HeadBlockStatePrefix,
+//                new HeadBlockValue());
+//        nameToAccountStore = new NameToAccountStore(db, 10,
+//                DataStoreConstant.NameToAccountIndexPrefix,new StringKey(),new UInt160Key());
+//        prodStateStore = new ProducerStateStore(db,  DataStoreConstant.ProducerStatePrefix,
+//                new ProducerStatusValue());
+
+
+//        HeadBlock headBlockStore = headBlkStore.get();
+//        if(headBlockStore == null)
+//            latestHeader = reInit();
+//        else
+//            latestHeader = init(headBlockStore);
+//
+//        if (forkBase.head() == null) {
+//            TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(genesisBlock);
+//            if(twoTuple != null) {
+//                List<ForkItem> saveBlocks = twoTuple.first;
+//                WriteBatch batch = db.getBatchWrite();
+//                saveBlocks.forEach(item -> {
+//                    onConfirmed(item.getBlock());
+//                    batch.delete(Serializabler.toBytes(item.getBlock().id()));
+//                });
+//                db.BatchWrite(batch);
+//            }
+//        }
     }
 
-    
+    private void populate(){
+        if (blockBase.head() == null) {
+            blockBase.add(genesisBlock);
+        }
+
+        if (forkBase.head() == null) {
+            forkBase.add(genesisBlock);
+        }
+
+        assert(forkBase.head().getBlock().height() >= blockBase.head().getIndex());
+
+        if (forkBase.head() != null)
+            latestHeader = forkBase.head().getBlock().getHeader();
+        else
+            latestHeader = blockBase.head();
+    }
 
     @Override
     public String getGenesisBlockChainId(){
-        return genesisBlock.id() + "";
+        return genesisBlockHeader.id() + "";
     }
 
     @Override
@@ -126,12 +152,20 @@ public class LevelDBBlockChain implements BlockChain{
     
     @Override
     public int getHeight(){
-        return latestHeader.getIndex();
+        if(forkBase.head()!=null){
+            return forkBase.head().getBlock().height();
+        }else{
+            return genesisBlockHeader.getIndex();
+        }
     }
 
     @Override
     public long getHeadTime(){
-    	return forkBase.head().getBlock().timeStamp();
+        if(forkBase.head()!=null){
+            return forkBase.head().getBlock().timeStamp();
+        }else{
+            return 0;
+        }
     }
         
     @Override
@@ -140,13 +174,13 @@ public class LevelDBBlockChain implements BlockChain{
     	if(forkHead != null) {
     		return forkHead.getBlock().getHeader();
     	}else {
-    		return latestHeader;
+    		return genesisBlockHeader;
     	}
     }
     
     @Override
     public long headTimeSinceGenesis(){
-        return latestHeader.getTimeStamp() - genesisBlockHeader.getTimeStamp();
+        return getLatestHeader().getTimeStamp() - genesisBlockHeader.getTimeStamp();
     }
 
     @Override
@@ -158,16 +192,20 @@ public class LevelDBBlockChain implements BlockChain{
     
     @Override
     public BlockHeader getHeader(UInt256 id){
-        return headerStore.get(id);
+        if(forkBase.get(id)!=null){
+            return forkBase.get(id).getBlock().getHeader();
+        }else {
+            return blockBase.getBlock(id).getHeader();
+        }
     }
 
     @Override
-    public BlockHeader getHeader(int index){
-        val id = heightStore.get(index);
-        if(id != null){
-            return getHeader(id);
+    public BlockHeader getHeader(int height){
+        if(forkBase.get(height)!=null){
+            return forkBase.get(height).getBlock().getHeader();
+        }else {
+            return blockBase.getBlock(height).getHeader();
         }
-        return null;
     }
     
     @Override
@@ -189,28 +227,20 @@ public class LevelDBBlockChain implements BlockChain{
     
     @Override
     public Block getBlock(UInt256 id){
-        val headerBlock = headerStore.get(id);
-        if(headerBlock != null){
-            val blkTxMapping = blkTxMappingStore.get(headerBlock.id());
-            val transactions = new ArrayList<Transaction>(blkTxMapping.getTxIds().size());
-            if(blkTxMapping != null){
-                blkTxMapping.getTxIds().forEach(key -> {
-                    Transaction transaction = txStore.get(key);
-                    if(transaction !=  null) transactions.add(transaction);
-                });
-            }
-            return new Block(headerBlock, transactions);
+        if(forkBase.get(id)!=null){
+            return forkBase.get(id).getBlock();
+        }else {
+            return blockBase.getBlock(id);
         }
-        return null;
     }
     
     @Override
-    public Block getBlock(int index){
-        val id = heightStore.get(index);
-        if(id != null){
-            return getBlock(id);
+    public Block getBlock(int height){
+        if(forkBase.get(height)!=null){
+            return forkBase.get(height).getBlock();
+        }else {
+            return blockBase.getBlock(height);
         }
-        return null;
     }
 
     @Override
@@ -222,36 +252,225 @@ public class LevelDBBlockChain implements BlockChain{
     		return forkItem.getBlock();
     	}
     }
-    
+
     @Override
-    public boolean containsBlock(UInt256 id){
-        return headerStore.contains(id);
+    public void startProduceBlock(PublicKey producer){
+        assert(pendingTxs.isEmpty());
+        ForkItem forkHead = forkBase.head();producer.pubKeyHash();
+//        UInt160 to = UInt160.fromBytes(Crypto.hash160(CryptoUtil.listTobyte(new BinaryData("0345ffbf8dc9d8ff15785e2c228ac48d98d29b834c2e98fb8cfe6e71474d7f6322").getData())));
+        Transaction minerTx = new Transaction(TransactionType.Miner, minerCoinFrom,
+                producer.pubKeyHash(), "", minerAward, UInt256.Zero(), new Long((latestHeader.getIndex() + 1)),
+               new BinaryData(new ArrayList<>()), new BinaryData(new ArrayList<>()),0x01,null);
+        try {
+            dataBase.startSession();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Boolean applied = applyTransaction(minerTx);
+        assert(applied);
+        pendingTxs.add(minerTx);
+
     }
-    
-    /**
-     * 产生区块
-     */
+
     @Override
-    public Block produceBlock(PublicKey producer, PrivateKey privateKey, long timeStamp,
-                              List<Transaction> transactions){
-        UInt160 to = UInt160.fromBytes(Crypto.hash160(CryptoUtil.listTobyte(new BinaryData("0345ffbf8dc9d8ff15785e2c228ac48d98d29b834c2e98fb8cfe6e71474d7f6322").getData())));
-        val minerTx = new Transaction(TransactionType.Miner, minerCoinFrom,
-                to, "", minerAward, UInt256.Zero(), new Long((latestHeader.getIndex() + 1)),
-                new BinaryData(new ArrayList<>()), new BinaryData(new ArrayList<>()),0x01,null);
-        val txs = getUpdateTransaction(minerTx, transactions);
-        val merkleRoot = MerkleTree.root(txs.stream().map(v -> v.id()).collect(Collectors.toList()));
+    public Boolean isProducingBlock(){
+        return !pendingTxs.isEmpty();
+    }
+
+
+    @Override
+    public boolean produceBlockAddTransaction(Transaction tx){
+        assert(!pendingTxs.isEmpty());
+        if (applyTransaction(tx)) {
+            pendingTxs.add(tx);
+            return true;
+        }
+        else
+            return false;
+    }
+
+    @Override
+    public Block produceBlockFinalize(PublicKey producer,PrivateKey privateKey,Long timeStamp){
+        assert(!pendingTxs.isEmpty());
         ForkItem forkHead = forkBase.head();
-        val header = BlockHeader.build(forkHead.getBlock().height() + 1, timeStamp, merkleRoot,
+        UInt256 merkleRoot = MerkleTree.root(pendingTxs.stream().map(v -> v.id()).collect(Collectors.toList()));
+        BlockHeader header = BlockHeader.build(
+                forkHead.getBlock().height() + 1, timeStamp, merkleRoot,
                 forkHead.getBlock().id(), producer, privateKey);
-        val block = new Block(header, txs);
-        TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(block);
-		if (twoTuple!= null && twoTuple.second) {
-			return block;
-		} else {
-			return null;
-		}
+        Block block = Block.build(header, pendingTxs);
+        pendingTxs.clear();
+        if (tryInsertBlock(block, false)) {
+            return block;
+        } else {
+            return null;
+        }
     }
-    
+
+
+    @Override
+    public Boolean tryInsertBlock(Block block,Boolean doApply){
+        boolean inserted = false;
+        if (!pendingTxs.isEmpty()) {
+            pendingTxs.forEach(tx ->{
+                unapplyTxs.add(tx);
+            });
+            pendingTxs.clear();
+            try {
+                dataBase.rollBack();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        if (forkBase.head().getBlock().id().equals(block.prev())) {
+            if (doApply == false) {   // check first !
+                forkBase.add(block);
+                inserted = true;
+                latestHeader = block.getHeader();
+            }
+            else if (applyBlock(block)) {
+                forkBase.add(block);
+                inserted = true;
+                latestHeader = block.getHeader();
+            }
+            else {
+                log.info("block "+block.height()+" "+block.id()+" apply error");
+                //forkBase.removeFork(block.id)
+            }
+        }
+        else {
+            log.info("received block added to minor fork chain. block "+block.height()+" "+block.id());
+            forkBase.add(block);
+            inserted = true;
+        }
+        return inserted;
+    }
+
+    private Boolean applyBlock(Block block){
+        boolean applied = false;
+        if (verifyBlock(block)) {
+            try {
+                dataBase.startSession();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            block.getTransactions().forEach(tx ->{
+                applyTransaction(tx);
+            });
+            applied = true;
+        }
+        return applied;
+    }
+
+//    @Override
+//    public boolean containsBlock(UInt256 id){
+//        return headerStore.contains(id);
+//    }
+//
+//    /**
+//     * 产生区块
+//     */
+//    @Override
+//    public Block produceBlock(PublicKey producer, PrivateKey privateKey, long timeStamp,
+//                              List<Transaction> transactions){
+//        UInt160 to = UInt160.fromBytes(Crypto.hash160(CryptoUtil.listTobyte(new BinaryData("0345ffbf8dc9d8ff15785e2c228ac48d98d29b834c2e98fb8cfe6e71474d7f6322").getData())));
+//        val minerTx = new Transaction(TransactionType.Miner, minerCoinFrom,
+//                to, "", minerAward, UInt256.Zero(), new Long((latestHeader.getIndex() + 1)),
+//                new BinaryData(new ArrayList<>()), new BinaryData(new ArrayList<>()),0x01,null);
+//        val txs = getUpdateTransaction(minerTx, transactions);
+//        val merkleRoot = MerkleTree.root(txs.stream().map(v -> v.id()).collect(Collectors.toList()));
+//        ForkItem forkHead = forkBase.head();
+//        val header = BlockHeader.build(forkHead.getBlock().height() + 1, timeStamp, merkleRoot,
+//                forkHead.getBlock().id(), producer, privateKey);
+//        val block = new Block(header, txs);
+//        TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(block);
+//		if (twoTuple!= null && twoTuple.second) {
+//			return block;
+//		} else {
+//			return null;
+//		}
+//    }
+
+    private Boolean applyTransaction(Transaction tx){
+        Account fromAccount;
+        if(dataBase.getAccount(tx.fromPubKeyHash())!=null){
+            fromAccount = dataBase.getAccount(tx.fromPubKeyHash());
+        }else {
+            fromAccount = new Account(true, "", Maps.newHashMap(), 0L);
+        }
+        Account toAccount = null;
+        if(dataBase.getAccount(tx.getToPubKeyHash())!=null){
+            toAccount = dataBase.getAccount(tx.getToPubKeyHash());
+        }else {
+            fromAccount = new Account(true, "", Maps.newHashMap(), 0L);
+        }
+        Map<UInt256, Fixed8> fromBalance = updateBalancesAccount(fromAccount.getBalances(),tx,"mus");
+        Map<UInt256, Fixed8> toBalance = updateBalancesAccount(toAccount.getBalances(),tx,"add");
+        dataBase.setAccount(tx.fromPubKeyHash(), new Account(true, fromAccount.getName(), fromBalance, fromAccount.getNextNonce() + 1),
+                tx.getToPubKeyHash(), new Account(true, toAccount.getName(), toBalance, toAccount.getNextNonce()));
+
+        return true;
+    }
+
+
+    private Map<UInt256, Fixed8> updateBalancesAccount(Map<UInt256, Fixed8> balancesInAccount,
+                                                       Transaction tx,String flag) {
+        Map<UInt256, Fixed8> updateBalances = new HashMap<>();
+        balancesInAccount.forEach((assetId, balance) -> {
+            if (tx.getAssetId().equals(assetId)) {
+                Fixed8 balanceTemp;
+                if("add".equals(flag)){
+                    balanceTemp = balance.add(tx.getAmount());
+                    updateBalances.put(assetId, balanceTemp);
+                }else{
+                    balanceTemp = balance.mus(tx.getAmount());
+                    if(balanceTemp.getValue()>0L){
+                        updateBalances.put(assetId, balanceTemp);
+                    }
+                }
+
+            } else
+                updateBalances.put(assetId, balance);
+        });
+
+        return updateBalances;
+    }
+
+
+    private Boolean verifyBlock(Block block){
+        if (!verifyHeader(block.getHeader()))
+            return false;
+        else if (!verifyTxs(block.getTransactions()))
+            return false;
+        else if (!verifyRegisterNames(block.getTransactions()))
+            return false;
+        else
+            return true;
+    }
+
+    private Boolean verifyTxs(List<Transaction> txs){
+        boolean isValid = true;
+        int txsNum = txs.size();
+        for (int i = 0; i < txsNum; i++) {
+            if(!verifyTransaction(txs.get(i)))
+                isValid = false;
+        }
+        return isValid;
+    }
+
+    private Boolean verifyTransaction(Transaction tx){
+        if (tx.getTxType() == TransactionType.Miner) {
+            return true;
+        } else {
+            boolean isValid = tx.verifySignature();
+            return isValid && checkAmount();
+        }
+    }
+
+
+
+    private Boolean verifyHeader(BlockHeader header) {
+        return header.verifySig();
+    }
     /**
      * 校验交易，并把矿工交易置为第一条记录
      * @param minerTx
@@ -267,79 +486,70 @@ public class LevelDBBlockChain implements BlockChain{
         return txs;
     }
     
-    @Override
-    public boolean tryInsertBlock(Block block) {
-        TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(block);
-        if(twoTuple != null) {
-            List<ForkItem> forkItem = twoTuple.first;
-            for (int i = 0; i < forkItem.size(); i++) {
-                onConfirmed(forkItem.get(i).getBlock());
-            }
-            return true;
-        }else
-            return false;
-    }
+//    @Override
+//    public boolean tryInsertBlock(Block block) {
+//        TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(block);
+//        if(twoTuple != null) {
+//            List<ForkItem> forkItem = twoTuple.first;
+//            for (int i = 0; i < forkItem.size(); i++) {
+//                onConfirmed(forkItem.get(i).getBlock());
+//            }
+//            return true;
+//        }else
+//            return false;
+//    }
 
-    @Override
-    public Transaction getTransaction(UInt256 id){
-        return  txStore.get(id);
-    }
 
-    @Override
-    public boolean containsTransaction(UInt256 id) {
-        return txStore.contains(id);
-    }
-    
-    /**
-	 * 已确认的Block存入数据库
-	 * @param block
-	 */
-	private void onConfirmed(Block block) {
-		log.info("confirm block height:"+ block.height()+" block id:"+block.id());
-		if(block.height() != 0) {
-			saveBlockToStores(block);
-		}
-	}
+//    /**
+//	 * 已确认的Block存入数据库
+//	 * @param block
+//	 */
+//	private void onConfirmed(Block block) {
+//		log.info("confirm block height:"+ block.height()+" block id:"+block.id());
+//		if(block.height() != 0) {
+//			saveBlockToStores(block);
+//		}
+//	}
 	
-    private boolean saveBlockToStores(Block block){
-        try {
-        	WriteBatch batch = db.getBatchWrite();
-            headerStore.set(block.getHeader().id(), block.getHeader(), batch);
-            heightStore.set(block.getHeader().getIndex(), block.getHeader().id(), batch);
-            headBlkStore.set(new HeadBlock(block.getHeader().getIndex(), block.getHeader().id()), batch);
-            val transations = new ArrayList<UInt256>(block.getTransactions().size());
-            block.getTransactions().forEach(transaction -> {transations.add(transaction.id());});
-            val blkTxMapping = new BlkTxMapping(block.id(), transations);
-            blkTxMappingStore.set(block.id(), blkTxMapping, batch);
-            Map<UInt160, Account> accounts = new HashMap<UInt160, Account>();
-            Map<UInt160, Map<UInt256, Fixed8>> balances = new HashMap<>();
-            block.getTransactions().forEach(tx -> {
-                txStore.set(tx.id(), tx, batch);
-                calcBalancesInBlock(balances, true, tx.fromPubKeyHash(), tx.getAmount(), tx.getAssetId());
-                calcBalancesInBlock(balances, false, tx.getToPubKeyHash(), tx.getAmount(), tx.getAssetId());
-                updateAccout(accounts, tx);
-            });
-            balances.forEach((accountAddress, balancesInLocalBlk) -> {
-                if(accountStore.contains(accountAddress)){
-                    val account = accountStore.get(accountAddress);
-                    val updateBalances = updateBalancesInAccount(account.getBalances(), balancesInLocalBlk);
-                    val updateAccount = new Account(account.isActive(), account.getName(),updateBalances,
-                            account.getNextNonce(), account.getVersion(), account.get_id());
-                    accountStore.set(accountAddress, updateAccount, batch);
-                }
-                else{
-                    val newAccount = new Account(true, "", getBalancesWithOutAccount(balancesInLocalBlk), 0L);
-                    accountStore.set(accountAddress, newAccount, batch);
-                }
-            });
-            latestHeader = block.getHeader();
-            db.BatchWrite(batch);
-            return true;
-        } catch (Throwable throwable) {
-            throwable.printStackTrace();
-            return false;
-        }
-    }
+//    private boolean saveBlockToStores(Block block){
+//        try {
+//        	WriteBatch batch = db.getBatchWrite();
+//            headerStore.set(block.getHeader().id(), block.getHeader(), batch);
+//            heightStore.set(block.getHeader().getIndex(), block.getHeader().id(), batch);
+//            headBlkStore.set(new HeadBlock(block.getHeader().getIndex(), block.getHeader().id()), batch);
+//            val transations = new ArrayList<UInt256>(block.getTransactions().size());
+//            block.getTransactions().forEach(transaction -> {transations.add(transaction.id());});
+//            val blkTxMapping = new BlkTxMapping(block.id(), transations);
+//            blkTxMappingStore.set(block.id(), blkTxMapping, batch);
+//            Map<UInt160, Account> accounts = new HashMap<UInt160, Account>();
+//            Map<UInt160, Map<UInt256, Fixed8>> balances = new HashMap<>();
+//            block.getTransactions().forEach(tx -> {
+//                txStore.set(tx.id(), tx, batch);
+//                calcBalancesInBlock(balances, true, tx.fromPubKeyHash(), tx.getAmount(), tx.getAssetId());
+//                calcBalancesInBlock(balances, false, tx.getToPubKeyHash(), tx.getAmount(), tx.getAssetId());
+//                updateAccout(accounts, tx);
+//            });
+//            balances.forEach((accountAddress, balancesInLocalBlk) -> {
+//                if(accountStore.contains(accountAddress)){
+//                    val account = accountStore.get(accountAddress);
+//                    val updateBalances = updateBalancesInAccount(account.getBalances(), balancesInLocalBlk);
+//                    val updateAccount = new Account(account.isActive(), account.getName(),updateBalances,
+//                            account.getNextNonce(), account.getVersion(), account.get_id());
+//                    accountStore.set(accountAddress, updateAccount, batch);
+//                }
+//                else{
+//                    val newAccount = new Account(true, "", getBalancesWithOutAccount(balancesInLocalBlk), 0L);
+//                    accountStore.set(accountAddress, newAccount, batch);
+//                }
+//            });
+//            latestHeader = block.getHeader();
+//            db.BatchWrite(batch);
+//            return true;
+//        } catch (Throwable throwable) {
+//            throwable.printStackTrace();
+//            return false;
+//        }
+//    }
     
 	private Map<UInt160, Map<UInt256, Fixed8>> calcBalancesInBlock(
 			Map<UInt160, Map<UInt256, Fixed8>> balances, Boolean spent, UInt160 address, Fixed8 amounts,
@@ -393,35 +603,7 @@ public class LevelDBBlockChain implements BlockChain{
         return;
     }
 	
-    @Override
-    public boolean verifyBlock(Block block) {
-        if (!verifyHeader(block.getHeader()))
-            return false;
-        if (!forAllTransactionsVerify(block.getTransactions()))
-            return false;
-        if (!verifyRegisterNames(block.getTransactions()))
-            return false;
-        return true;
-    }
 
-    private boolean verifyHeader(BlockHeader header){
-        if (header.getIndex() != latestHeader.getIndex() + 1)
-            return false;
-        if (header.getTimeStamp() < latestHeader.getTimeStamp())
-            return false;
-        // TODO: verify rule of timeStamp and producer
-        if (header.id().equals(latestHeader.id()))
-            return false;
-        if (!header.getPrevBlock().equals(latestHeader.id()))
-            return false;
-        if (header.getProducer().toBin().getLength() != 33)
-            return false;
-        if (!header.verifySig())
-            return false;
-        return true;
-    }
-    
-    
     private boolean forAllTransactionsVerify(List<Transaction> transactions) {
         boolean flag = true;
         for(Transaction transaction : transactions){
@@ -434,26 +616,51 @@ public class LevelDBBlockChain implements BlockChain{
     }
 	
     private boolean verifyRegisterNames(List<Transaction> transactions){
-        val newNames = new ArrayList<String>();
-        val registers = new ArrayList<UInt160>();
-        for(Transaction tx: transactions){
-            if (tx.getTxType() == TransactionType.RegisterName) {
+        boolean isValid = true;
+        Set<String> newNames = new HashSet();
+        Set<UInt160> registers = new HashSet();
+        int txNum = transactions.size();
+        for (int i = 0; i < txNum; i++) {
+            Transaction tx = transactions.get(i);
+            if(tx.getTxType() == TransactionType.RegisterName){
                 String name = "";
                 try {
                     name = new String(CryptoUtil.binaryData2array(tx.getData()), "UTF-8");
                 } catch (UnsupportedEncodingException e) {
                     e.printStackTrace();
                 }
-                if (newNames.contains(name)) return false;
-                if (registers.contains(tx.fromPubKeyHash())) return false;
+                if(name.length()!=10){
+                    isValid = false;
+                }
+                if(newNames.contains(name)){
+                    isValid = false;
+                }
+                if(registers.contains(tx.fromPubKeyHash())){
+                    isValid = false;
+                }
                 newNames.add(name);
                 registers.add(tx.fromPubKeyHash());
-            }}
-        // make sure name is not used
-        return forAllNewNamesVerify(newNames) && !forAllRegistersVerify(registers);
-        // make sure register never registed before
+            }
+        }
+        Iterator newNamesIt = newNames.iterator();
+        while (newNamesIt.hasNext()) {
+            if(dataBase.nameExists((String)newNamesIt.next())){
+                isValid = false;
+                break;
+            }
+        }
+
+        Iterator registersIt = registers.iterator();
+        while (newNamesIt.hasNext()) {
+            if(dataBase.registerExists((UInt160)registersIt.next())){
+                isValid = false;
+                break;
+            }
+        }
+        return isValid;
     }
-    
+
+
     private boolean forAllNewNamesVerify(ArrayList<String> names) {
         boolean flag = true;
         for(String name : names){
@@ -478,15 +685,6 @@ public class LevelDBBlockChain implements BlockChain{
     }
 
     
-    @Override
-    public boolean verifyTransaction(Transaction tx) {
-        if (tx.getTxType() == TransactionType.Miner) {
-            // TODO check miner and only one miner tx
-            return true;
-        }
-        val isInvalid = tx.verifySignature();
-        return isInvalid && checkAmount();
-    }
 
     boolean checkAmount(){
         return true;
@@ -494,58 +692,17 @@ public class LevelDBBlockChain implements BlockChain{
     
     @Override
     public Map<UInt256, Long> getBalance(UInt160 address){
-        val account = accountStore.get(address);
-        if(account == null) return null;
-        else{
-            if(account.isActive()){
-                Map<UInt256, Long> map = new HashMap<UInt256, Long>();
-                val balanceKeys = account.getBalances().keySet();
-                val balances = account.getBalances();
-                balanceKeys.forEach(key -> {
-                    map.put(key, balances.get(key).getValue());
-                });
-            }
-            return null;
-        }
+        Map<UInt256, Long> resultMap = Maps.newHashMap();
+        Map<UInt256, Fixed8> map = dataBase.getBalance(address);
+        map.forEach((k,v) ->{
+            resultMap.put(k,v.getValue());
+        });
+        return resultMap;
     }
 
     @Override
     public Account getAccount(UInt160 address) {
-    	return accountStore.get(address);
+    	return dataBase.getAccount(address);
     }
     
-    private BlockHeader initDB(WriteBatch batch){
-        BlkTxMapping blkTxMapping = new BlkTxMapping(genesisBlock.id(), genesisBlock.getTransactionIds());
-        blkTxMappingStore.set(genesisBlock.id(), blkTxMapping, batch);
-        headerStore.set(genesisBlock.id(), genesisBlockHeader, batch);
-        heightStore.set(genesisBlock.height(), genesisBlock.id(), batch);
-        headBlkStore.set(new HeadBlock(genesisBlockHeader.getIndex(), genesisBlockHeader.id()), batch);
-        prodStateStore.set(new ProducerStatus(1L), batch);
-        return genesisBlockHeader;
-    }
-
-    public BlockHeader reInitDB(WriteBatch batch){
-        headerStore.foreachForDelete(batch);
-        heightStore.foreachForDelete(batch);
-        blkTxMappingStore.foreachForDelete(batch);
-        accountStore.foreachForDelete(batch);
-        nameToAccountStore.foreachForDelete(batch);
-        prodStateStore.delete(batch);
-        headBlkStore.delete(batch);
-        return initDB(batch);
-    }
-
-    public BlockHeader reInit(){
-        val batch = db.getBatchWrite();
-        val ret = reInitDB(batch);
-        db.BatchWrite(batch);
-        return ret;
-    }
-
-    public BlockHeader init(HeadBlock headBlock){
-        val blockHeader = headerStore.get(headBlock.getId());
-        if(blockHeader == null) return reInit();
-        else return blockHeader;
-    }
-
 }

@@ -1,12 +1,11 @@
 package com.uchain.core;
 
-import java.util.List;
-import java.util.Map;
-
 import com.uchain.crypto.PrivateKey;
 import com.uchain.crypto.PublicKey;
 import com.uchain.crypto.UInt160;
 import com.uchain.crypto.UInt256;
+
+import java.util.Map;
 
 public interface BlockChain extends Iterable<Block>{
 
@@ -32,23 +31,28 @@ public interface BlockChain extends Iterable<Block>{
     
     Block getBlockInForkBase(UInt256 id);
 
-    boolean containsBlock(UInt256 id);
+    void startProduceBlock(PublicKey producer);
 
-    boolean tryInsertBlock(Block block);
+    boolean produceBlockAddTransaction(Transaction tx);
 
-    Transaction getTransaction(UInt256 id);
+    Block produceBlockFinalize(PublicKey producer, PrivateKey privateKey, Long timeStamp);
 
-    boolean containsTransaction(UInt256 id);
+    Boolean isProducingBlock();
 
-    boolean verifyBlock(Block block);
+    Boolean tryInsertBlock(Block block,Boolean doApply);
 
-    boolean verifyTransaction(Transaction tx);
+//    Transaction getTransaction(UInt256 id);
+//
+//    boolean containsTransaction(UInt256 id);
+
+//    boolean verifyBlock(Block block);
+//
+//    boolean verifyTransaction(Transaction tx);
 
     Map<UInt256, Long> getBalance(UInt160 address);
 
+    Account getAccount(UInt160 address);
+
     String getGenesisBlockChainId();
 
-    Block produceBlock(PublicKey producer, PrivateKey privateKey, long timeStamp,
-                              List<Transaction> txs);
-    Account getAccount(UInt160 address);
 }

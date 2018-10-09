@@ -1,5 +1,12 @@
 package com.uchain.core;
 
+import com.uchain.common.Serializabler;
+import com.uchain.crypto.UInt160;
+import com.uchain.crypto.UInt256;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.val;
+
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -8,14 +15,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.uchain.common.Serializabler;
-import com.uchain.crypto.UInt160;
-import com.uchain.crypto.UInt256;
-
-import lombok.Getter;
-import lombok.Setter;
-import lombok.val;
 
 @Setter
 @Getter
@@ -98,5 +97,9 @@ public class Block implements Identifier<UInt160>{
 			e.printStackTrace();
 		}
 		return null;
+    }
+
+    public static Block build(BlockHeader header, List<Transaction> txs){
+        return new Block(header, txs);
     }
 }

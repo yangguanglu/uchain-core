@@ -1,17 +1,18 @@
 package com.uchain.storage;
 
 import com.uchain.core.datastore.SessionManger;
-import org.iq80.leveldb.DB;
-import org.iq80.leveldb.DBIterator;
-import org.iq80.leveldb.ReadOptions;
-import org.iq80.leveldb.WriteBatch;
+import lombok.val;
+import org.iq80.leveldb.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
+
+import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
 public class LevelDbStorage implements Storage<byte[], byte[]> {
 	private static final Logger log = LoggerFactory.getLogger(LevelDbStorage.class);
@@ -241,4 +242,18 @@ public class LevelDbStorage implements Storage<byte[], byte[]> {
 //		}
 //		return linkedHashMap;
 //	}
+    public static LevelDbStorage open(String path){
+        return open(path,true);
+    }
+    public static LevelDbStorage open(String path,Boolean createIfMissing){
+        val options = new Options();
+        options.createIfMissing(createIfMissing);
+        try {
+            DB db = factory.open(new File(path),options);
+            return new LevelDbStorage(db);
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+        return null;
+    }
 }

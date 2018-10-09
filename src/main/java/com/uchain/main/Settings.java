@@ -32,22 +32,17 @@ public class Settings {
 		this.updateEvery = resource.getString("updateEvery");
 		this.timeout = resource.getString("timeout");
 
-		this.blockBaseSetting = new BlockBaseSetting(resource.getString("block_dir"),
-				Boolean.parseBoolean(resource.getString("cacheEnabled")), Integer.valueOf(resource.getString("cacheSize")));
-
 		this.chainSettings = new ChainSettings(resource.getString("chain_dbDir"), resource.getString("chain_forkDir"),
 				resource.getString("chain_miner"), Long.valueOf(resource.getString("chain_genesis_timeStamp")),
 				resource.getString("chain_genesis_publicKey"), resource.getString("chain_genesis_privateKey"));
-        this.chainDataBaseDir = resource.getString("chain_dataBase_dir");
-        this.chainDataBaseCacheEnabled = Boolean.valueOf(resource.getString("chain_dataBase_cacheEnabled"));
-        this.chainDataBaseCacheSize = Integer.parseInt(resource.getString("chain_dataBase_cacheSize"));
         this.chainForkBaseDir = resource.getString("chain_forkBase_dir");
         this.chainForkBaseCacheEnabled = Boolean.valueOf(resource.getString("chain_forkBase_cacheEnabled"));
         this.chainForkBaseCacheSize = Integer.parseInt(resource.getString("chain_forkBase_cacheSize"));
-        this.chainBlockBaseDir = resource.getString("chain_blockBase_dir");
-        this.chainBlockBaseCacheEnabled = Boolean.valueOf(resource.getString("chain_blockBase_cacheEnabled"));
-        this.chainBlockBaseCacheSize = Integer.parseInt(resource.getString("chain_blockBase_cacheSize"));
 
+        this.blockBaseSetting = new BlockBaseSetting(resource.getString("chain_blockBase_dir"),Boolean.valueOf(resource.getString("chain_blockBase_cacheEnabled")),
+                Integer.parseInt(resource.getString("chain_blockBase_cacheSize")));
+        this.dataBaseSetting = new DataBaseSetting(resource.getString("chain_dataBase_dir"),Boolean.valueOf(resource.getString("chain_dataBase_cacheEnabled")),
+                Integer.parseInt(resource.getString("chain_dataBase_cacheSize")));
 		String initialWitness = resource.getString("initialWitness");
 		int produceInterval = Integer.parseInt(resource.getString("produceInterval"));
 		int acceptableTimeError = Integer.parseInt(resource.getString("acceptableTimeError").trim());
@@ -75,17 +70,12 @@ public class Settings {
 	private ChainSettings chainSettings;
 	private ConsensusSettings consensusSettings;
 
-	private BlockBaseSetting blockBaseSetting;
-
-    private String chainDataBaseDir;
-    private boolean chainDataBaseCacheEnabled;
-    private Integer chainDataBaseCacheSize;
     private String chainForkBaseDir;
     private boolean chainForkBaseCacheEnabled;
     private Integer chainForkBaseCacheSize;
-    private String chainBlockBaseDir;
-    private boolean chainBlockBaseCacheEnabled;
-    private Integer chainBlockBaseCacheSize;
+
+    private BlockBaseSetting blockBaseSetting;
+    private DataBaseSetting dataBaseSetting;
 
 	private static List<Witness> getWitness(String json) {
 		List<Witness> list = new ArrayList<Witness>();
