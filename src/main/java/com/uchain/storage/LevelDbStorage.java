@@ -10,7 +10,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 
 import static org.fusesource.leveldbjni.JniDBFactory.factory;
@@ -133,12 +132,12 @@ public class LevelDbStorage implements Storage<byte[], byte[]> {
 
     @Override
     public Integer revision(){
-	    return sessionManger.getLevel();
+	    return sessionManger.get_revision();
     }
 
     @Override
     public List<Integer> uncommitted(){
-        return sessionManger.getLevels();
+        return sessionManger.getRevisions();
     }
 
 	public byte[] get(byte[] key, ReadOptions opt) {

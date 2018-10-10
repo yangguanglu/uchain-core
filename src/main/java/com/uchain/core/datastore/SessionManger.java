@@ -11,7 +11,6 @@ package com.uchain.core.datastore;
 
 import com.uchain.core.datastore.keyvalue.IntKey;
 import com.uchain.storage.Batch;
-import com.uchain.storage.LevelDbStorage;
 import lombok.val;
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
@@ -32,7 +31,7 @@ public class SessionManger {
 
     private List<RollSession> sessions = new ArrayList<>();
 
-    private int level = 1;
+    private int _revision = 1;
 
     private Session defaultSession = new Session();
 
@@ -40,20 +39,20 @@ public class SessionManger {
 
     public SessionManger(DB db/*, RollSession session*/){
         this.db = db;
-        this.prefix = Session.byteMergerAll(util.toBytes(StoreType.getStoreType(StoreType.Data)), util.toBytes(DataType.getDataType(DataType.Session)));
-        /*this.session = new RollSession(db,prefix,level);
+        this.prefix = new byte[]{(byte) StoreType.getStoreType(StoreType.Data),(byte)DataType.getDataType(DataType.Session)};
+        /*this.session = new RollSession(db,prefix,_revision);
         this.sessions.add(this.session);*/
         init();
     }
 
-    public int getLevel(){
-        return level;
+    public int get_revision(){
+        return _revision;
     }
 
-    public List<Integer> getLevels(){
+    public List<Integer> getRevisions(){
         List res = new ArrayList();
         sessions.forEach(session1 -> {
-            res.add(session1.getLevel());
+            res.add(session1.get_revision());
         });
         return res;
     }
@@ -76,7 +75,7 @@ public class SessionManger {
         }
 
         RollSession res = sessions.get(sessions.size()-1);
-        assert(res.getLevel() != level);
+        assert(res.get_revision() != _revision);
     }
 
     private Boolean reloadSessions(DBIterator iterator){
@@ -90,7 +89,7 @@ public class SessionManger {
                 sessions.add(rsession);
                 rsession.init(value);
             }else {
-                level = Integer.valueOf(new BigInteger(value).toString());
+                _revision = Integer.valueOf(new BigInteger(value).toString());
             }
             iterator.next();
             return false;
@@ -126,7 +125,7 @@ public class SessionManger {
     //關閉當前版本以前的會話
     public void commit(int revision){
         sessions.forEach(session1 -> {
-            if(revision <= session1.getLevel()){
+            if(session1.get_revision()  <= revision){
                 sessions.remove(session1);
                 session1.close();
             }
@@ -139,10 +138,10 @@ public class SessionManger {
         WriteBatch batch = db.createWriteBatch();
         try {
             session1.rollBack(batch);
-            batch.put(prefix,util.toBytes(level-1));
+            batch.put(prefix,BigInteger.valueOf(new Long(_revision - 1)).toByteArray());
             db.write(batch);
             sessions.remove(session1);
-            level = level -1;
+            _revision = _revision -1;
         }
         finally {
             batch.close();
@@ -150,11 +149,11 @@ public class SessionManger {
     }
 
     public RollSession newSession() throws IOException{
-        RollSession sessionRoll = new RollSession(db, prefix, level);
+        RollSession sessionRoll = new RollSession(db, prefix, _revision);
         WriteBatch batch = db.createWriteBatch();
         try{
             sessionRoll.init(batch);
-            batch.put(prefix,new BigInteger(String.valueOf(level+1)).toByteArray());
+            batch.put(prefix,new BigInteger(String.valueOf(_revision +1)).toByteArray());
             db.write(batch);
         }
         finally {
@@ -162,7 +161,7 @@ public class SessionManger {
         }
 
         sessions.add(sessionRoll);
-        level += 1;
+        _revision += 1;
         return sessionRoll;
     }
 }

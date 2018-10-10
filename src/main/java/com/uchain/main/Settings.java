@@ -32,20 +32,24 @@ public class Settings {
 		this.updateEvery = resource.getString("updateEvery");
 		this.timeout = resource.getString("timeout");
 
-		this.chainSettings = new ChainSettings(resource.getString("chain_dbDir"), resource.getString("chain_forkDir"),
-				resource.getString("chain_miner"), Long.valueOf(resource.getString("chain_genesis_timeStamp")),
-				resource.getString("chain_genesis_publicKey"), resource.getString("chain_genesis_privateKey"));
-        this.blockBaseSetting = new BlockBaseSettings(resource.getString("chain_blockBase_dir"),Boolean.valueOf(resource.getString("chain_blockBase_cacheEnabled")),
+
+        BlockBaseSettings blockBaseSetting = new BlockBaseSettings(resource.getString("chain_blockBase_dir"),Boolean.valueOf(resource.getString("chain_blockBase_cacheEnabled")),
                 Integer.parseInt(resource.getString("chain_blockBase_cacheSize")));
-        this.dataBaseSetting = new DataBaseSettings(resource.getString("chain_dataBase_dir"),Boolean.valueOf(resource.getString("chain_dataBase_cacheEnabled")),
+        DataBaseSettings dataBaseSetting = new DataBaseSettings(resource.getString("chain_dataBase_dir"),Boolean.valueOf(resource.getString("chain_dataBase_cacheEnabled")),
                 Integer.parseInt(resource.getString("chain_dataBase_cacheSize")));
-        this.forkBaseSettings = new ForkBaseSettings(resource.getString("chain_forkBase_dir"),Boolean.valueOf(resource.getString("chain_forkBase_cacheEnabled")),
+        ForkBaseSettings forkBaseSettings = new ForkBaseSettings(resource.getString("chain_forkBase_dir"),Boolean.valueOf(resource.getString("chain_forkBase_cacheEnabled")),
                 Integer.parseInt(resource.getString("chain_forkBase_cacheSize")));
+
+        this.chainSettings = new ChainSettings(blockBaseSetting, dataBaseSetting,forkBaseSettings,
+                resource.getString("chain_miner"), Long.valueOf(resource.getString("chain_genesis_timeStamp")),
+                resource.getString("chain_genesis_publicKey"), resource.getString("chain_genesis_privateKey"));
+
 		String initialWitness = resource.getString("initialWitness");
 		int produceInterval = Integer.parseInt(resource.getString("produceInterval"));
 		int acceptableTimeError = Integer.parseInt(resource.getString("acceptableTimeError").trim());
 		int producerRepetitions = Integer.parseInt(resource.getString("producerRepetitions").trim());
 		this.consensusSettings = new ConsensusSettings(getWitness(initialWitness),produceInterval,acceptableTimeError,producerRepetitions);
+		this.rpcServerSetting = new RPCServerSetting(resource.getString("rpcServerHost"), resource.getString("rpcServerPort"));
 	}
 
 	private String nodeName;
@@ -67,13 +71,10 @@ public class Settings {
 
 	private ChainSettings chainSettings;
 	private ConsensusSettings consensusSettings;
-
-    private BlockBaseSettings blockBaseSetting;
-    private DataBaseSettings dataBaseSetting;
-    private ForkBaseSettings forkBaseSettings;
+	private RPCServerSetting rpcServerSetting;
 
 	private static List<Witness> getWitness(String json) {
-		List<Witness> list = new ArrayList<Witness>();
+		List<Witness> list = new ArrayList();
 		try {
 			JSONArray jsonObject = JSONArray.fromObject(json);
 			for (Iterator<?> iterator = jsonObject.iterator(); iterator.hasNext();) {

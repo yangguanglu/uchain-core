@@ -10,12 +10,10 @@ package com.uchain.core.datastore;
  * *************************************************************/
 
 import com.uchain.storage.Batch;
-import com.uchain.storage.LevelDbStorage;
 import lombok.val;
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.WriteBatch;
 
-import java.io.IOException;
 import java.math.BigInteger;
 
 public class RollSession extends Session{
@@ -24,7 +22,7 @@ public class RollSession extends Session{
 
     private byte[] prefix;
 
-    private int level;
+    private int _revision;
 
     private byte[] sessionId;
 
@@ -32,11 +30,11 @@ public class RollSession extends Session{
 
     private boolean closed = false;
 
-    public RollSession(DB db,byte[] prefix,Integer level){
+    public RollSession(DB db,byte[] prefix,Integer _revision){
         this.db = db;
         this.prefix = prefix;
-        this.level = level;
-        this.sessionId = Session.byteMergerAll(prefix,new BigInteger(level.toString()).toByteArray());
+        this._revision = _revision;
+        this.sessionId = Session.byteMergerAll(prefix,new BigInteger(_revision.toString()).toByteArray());
         //init();
     }
 
@@ -57,8 +55,8 @@ public class RollSession extends Session{
         closed = true;
     }
 
-    public int getLevel(){
-        return level;
+    public int get_revision(){
+        return _revision;
     }
     /*private void init(){
         byte[] session = db.get(this.sessionId);

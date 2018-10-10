@@ -13,14 +13,15 @@ import com.uchain.crypto.PublicKey;
 import com.uchain.crypto.UInt256;
 import com.uchain.main.ConsensusSettings;
 import com.uchain.main.Witness;
-import lombok.val;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Producer extends AbstractActor {
     private static final Logger log = LoggerFactory.getLogger(Producer.class);
@@ -79,7 +80,7 @@ public class Producer extends AbstractActor {
 		Long next = nextBlockTime(1);
         if (next - now <= settings.getProduceInterval()
                 && chain.isProducingBlock() == false) {
-            val witness = getWitness(nextProduceTime(now, next));
+            Witness witness = getWitness(nextProduceTime(now, next));
             if (!(witness.getPrivkey()==null)) {
                 log.info("startProduceBlock");
                 chain.startProduceBlock(PublicKey.apply(new BinaryData(witness.getPubkey())));
@@ -90,20 +91,6 @@ public class Producer extends AbstractActor {
 		if (now + settings.getAcceptableTimeError() < next) {
 			return new NotYet(next,now);
 		}else {
-//		    Witness witness = getWitness(nextProduceTime(now, next));
-//		    if("".equals(witness.getPrivkey())) {
-//		    	return new NotMyTurn(witness.getName(), PublicKey.apply(new BinaryData(witness.getPubkey())));
-//		    }else {
-//				Collection<Transaction> valueCollection = txPool.values();
-//				List<Transaction> txs = new ArrayList<>(valueCollection);
-//				Block block = chain.produceBlock(PublicKey.apply(new BinaryData(witness.getPubkey())),
-//						PrivateKey.apply(new BinaryData(witness.getPrivkey())), nextProduceTime(now, next), txs);
-//				txPool.clear();
-//				return new Success(block, witness.getName(), now);
-//		    }
-
-
-
             if (nextProduceTime(now, next) > next) {
                 //println(s"some blocks skipped")
             }

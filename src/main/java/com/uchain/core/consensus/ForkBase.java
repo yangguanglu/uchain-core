@@ -43,10 +43,10 @@ public class ForkBase {
 	
 	
 	public ForkBase(Settings settings) {
-		String path = settings.getForkBaseSettings().getDir();
+		String path = settings.getChainSettings().getForkBaseSettings().getDir();
 		this.db = ConnFacory.getInstance(path);
 		this.settings = settings;
-        forkStore = new ForkItemStore(db,settings.getForkBaseSettings().getCacheSize(),DataStoreConstant.ForkItemPrefix,new UInt256Key(),new ForkItemValue());
+        forkStore = new ForkItemStore(db,settings.getChainSettings().getForkBaseSettings().getCacheSize(),DataStoreConstant.ForkItemPrefix,new UInt256Key(),new ForkItemValue());
 		init();
 	}
 

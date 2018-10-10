@@ -59,8 +59,8 @@ public class LevelDBBlockChain implements BlockChain{
         genesisProducer = PublicKey.apply(new BinaryData(settings.getChainSettings().getChain_genesis_publicKey())); // TODO: read from settings
         genesisProducerPrivKey = new PrivateKey(Scalar.apply(new BinaryData(settings.getChainSettings().getChain_genesis_privateKey())));
 
-        blockBase = new BlockBase(settings.getBlockBaseSetting());
-        dataBase = new DataBase(settings.getDataBaseSetting());
+        blockBase = new BlockBase(settings.getChainSettings().getBlockBaseSettings());
+        dataBase = new DataBase(settings.getChainSettings().getDataBaseSettings());
 
         // TODO: folkBase is todo
         // TODO: zero is not a valid pub key, need to work out other method

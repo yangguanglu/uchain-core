@@ -9,10 +9,12 @@ import java.io.IOException;
 import java.net.URI;
 
 public class JerseyServer {
-    public static final String BASE_URI = "http://localhost:1943/";
+
 
     public static HttpServer startServer(ActorRef nodeActor, ActorRef producerActor, LevelDBBlockChain chain){
         final APIApplication apiApplication = new APIApplication(nodeActor, producerActor,chain);
+        final String BASE_URI = /*"http://localhost:1943/"*/"http://" + chain.getSettings().getRpcServerSetting().getRpcServerHost()
+                +":"+chain.getSettings().getRpcServerSetting().getRpcServerPort()+"/";
         return GrizzlyHttpServerFactory.createHttpServer(URI.create(BASE_URI), apiApplication);
     }
 
