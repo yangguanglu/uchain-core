@@ -37,12 +37,12 @@ public class BlockBase{
     }
 
     public  void add (Block block){
-        if (head().id().toString().equals(block.prev().toString())){
+        if (head()== null || head().id().toString().equals(block.prev().toString())){
             Batch batch = db.batchWrite();
-                blockStore.set(block.id(), block, batch);
-                heightStore.set(block.height(), block.id(), batch);
-                headBlkStore.set(block.getHeader(), batch);
-                db.applyBatch(batch);
+            blockStore.set(block.id(), block, batch);
+            heightStore.set(block.height(), block.id(), batch);
+            headBlkStore.set(block.getHeader(), batch);
+            db.applyBatch(batch);
         }
         else throw new IllegalArgumentException("requirement failed");
     }

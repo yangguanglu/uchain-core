@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 @Setter
 public class LevelDBBlockChain implements BlockChain{
 	private static final Logger log = LoggerFactory.getLogger(LevelDBBlockChain.class);
-//    private LevelDbStorage db;
     private Settings settings;
     private ForkBase forkBase;
     
@@ -49,18 +48,17 @@ public class LevelDBBlockChain implements BlockChain{
     private ProducerStatus latestProdState;
     private BlockBase blockBase;
     private DataBase dataBase;
-    private List<Transaction> pendingTxs;
-    private List<Transaction> unapplyTxs;
+    private List<Transaction> pendingTxs = Lists.newArrayList();
+    private List<Transaction> unapplyTxs = Lists.newArrayList();
 
     LevelDBBlockChain(Settings settings){
-//    	this.db = ConnFacory.getInstance(settings.getChainSettings().getChain_dbDir());
     	this.settings = settings;
-    	forkBase = new ForkBase(settings);
         genesisProducer = PublicKey.apply(new BinaryData(settings.getChainSettings().getChain_genesis_publicKey())); // TODO: read from settings
         genesisProducerPrivKey = new PrivateKey(Scalar.apply(new BinaryData(settings.getChainSettings().getChain_genesis_privateKey())));
 
         blockBase = new BlockBase(settings.getChainSettings().getBlockBaseSettings());
         dataBase = new DataBase(settings.getChainSettings().getDataBaseSettings());
+        forkBase = new ForkBase(settings);
 
         // TODO: folkBase is todo
         // TODO: zero is not a valid pub key, need to work out other method

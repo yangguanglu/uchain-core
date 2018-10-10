@@ -21,7 +21,7 @@ public class LevelDbStorage implements Storage<byte[], byte[]> {
 
 	public LevelDbStorage(DB db) {
 		this.db = db;
-		sessionManger = new SessionManger(db);
+        this.sessionManger = new SessionManger(db);
 	}
 
 	public SessionManger getSessionManger() {

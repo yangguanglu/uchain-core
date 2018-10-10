@@ -56,6 +56,7 @@ public class SessionItem implements Serializable {
             map.forEach((key,value)->fillUpdate(key,value));
             map.forEach((key,value)->fillDelete(key,value));
         }catch (Exception e){
+            e.printStackTrace();
             System.out.println("Catch Exception!");
         }
     }

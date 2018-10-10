@@ -73,19 +73,23 @@ public class SessionManger {
                 e.printStackTrace();
             }
         }
-
-        RollSession res = sessions.get(sessions.size()-1);
-        assert(res.get_revision() != _revision);
+        if(sessions.size()>0) {
+            RollSession res = sessions.get(sessions.size() - 1);
+            assert (res.get_revision() != _revision);
+        }
     }
 
     private Boolean reloadSessions(DBIterator iterator){
         val kv = iterator.peekNext();
         byte[] key = kv.getKey();
-        if(key.toString().startsWith(prefix.toString())){
+        if(key[0]==prefix[0]){
             byte[] value = kv.getValue();
             if(key.length > prefix.length){
-                BigInteger version = new BigInteger(key.toString().substring(prefix.length));
-                RollSession rsession = new RollSession(db,prefix,new Integer(version.toString()));
+                int count = key.length-prefix.length;
+                byte[] bs = new byte[count];
+                System.arraycopy(key, prefix.length, bs, 0, count);
+                BigInteger version = new BigInteger(bs);
+                RollSession rsession = new RollSession(db,prefix,version.intValue());
                 sessions.add(rsession);
                 rsession.init(value);
             }else {
@@ -98,31 +102,33 @@ public class SessionManger {
         }
     }
     public Batch beginSet(byte[] k, byte[] v, Batch batch) throws Exception{
-        Session session = sessions.get(sessions.size() -1);
-        if(null == session){
+        Session session;
+        if(sessions.size()==0){
             session = defaultSession;
+        }else{
+            session = sessions.get(sessions.size() -1);
         }
-
         return session.onSet(k,v,batch);
 
     }
 
     public Batch beginDelete(byte[] k,Batch batch){
-        Session session = sessions.get(sessions.size() -1);
-        if(null == session){
+        Session session;
+        if(sessions.size()==0){
             session = defaultSession;
+        }else{
+            session = sessions.get(sessions.size() -1);
         }
-
         return session.onDelete(k,batch);
     }
-    //關閉會話
+
     public void commit(){
         RollSession session = sessions.get(0);
         if(session == null) return;
         sessions.remove(0);
         session.close();
     }
-    //關閉當前版本以前的會話
+
     public void commit(int revision){
         sessions.forEach(session1 -> {
             if(session1.get_revision()  <= revision){

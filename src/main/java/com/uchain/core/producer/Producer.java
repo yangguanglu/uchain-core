@@ -40,11 +40,11 @@ public class Producer extends AbstractActor {
 	}
 
 	private Map<UInt256, Transaction> txPool = new HashMap<UInt256, Transaction>();
-	private boolean canProduce = false;
+	private boolean canProduce = true;
 
 	@Override
 	public void preStart() {
-		ProduceTask task = new ProduceTask(this, peerManager, canProduce);
+		ProduceTask task = new ProduceTask(this, peerManager, false);
 		getContext().system().scheduler().scheduleOnce(Duration.ZERO, task, getContext().system().dispatcher());
 	}
 

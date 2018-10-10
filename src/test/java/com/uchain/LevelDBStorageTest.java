@@ -1,14 +1,14 @@
 package com.uchain;
 
-import java.util.Map;
-
-import com.uchain.storage.LevelDbStorage;
-import org.junit.*;
-
 import com.google.common.collect.Maps;
 import com.uchain.storage.ConnFacory;
-
+import com.uchain.storage.LevelDbStorage;
 import lombok.val;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import java.util.Map;
 
 public class LevelDBStorageTest {
 
@@ -16,7 +16,7 @@ public class LevelDBStorageTest {
 
 	@BeforeClass
 	public static void setUp(){
-		storage = ConnFacory.getInstance("\\.\\test_db");
+		storage = ConnFacory.getInstance("test_net/fork");
 	}
 
 	@AfterClass
