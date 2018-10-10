@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import static org.fusesource.leveldbjni.JniDBFactory.factory;
@@ -21,7 +22,7 @@ public class LevelDbStorage implements Storage<byte[], byte[]> {
 
 	public LevelDbStorage(DB db) {
 		this.db = db;
-		sessionManger = new SessionManger(this);
+		sessionManger = new SessionManger(db);
 	}
 
 	public SessionManger getSessionManger() {
@@ -48,7 +49,7 @@ public class LevelDbStorage implements Storage<byte[], byte[]> {
             e.printStackTrace();
         }
         if(newBatch != batch){
-            return applyBatch(newBatch,"add");
+            return applyBatch(newBatch);
         } else {
 	        return true;
         }
@@ -58,7 +59,7 @@ public class LevelDbStorage implements Storage<byte[], byte[]> {
 	public boolean delete(byte[] key, Batch batch){
         Batch newBatch = sessionManger.beginDelete(key, batch);
         if(newBatch != batch){
-            return applyBatch(newBatch,"del");
+            return applyBatch(newBatch);
         } else {
             return true;
         }
@@ -101,17 +102,20 @@ public class LevelDbStorage implements Storage<byte[], byte[]> {
         }
     }
 
-    private boolean applyBatch(Batch batch,String flag){
+    public boolean applyBatch(Batch batch){
         WriteBatch update = db.createWriteBatch();
         try {
-            if ("add".equals(flag)) {
-                batch.getOps().forEach((k, v) -> {
-                    update.put(k, v);
-                });
-            } else {
-                batch.getOps().forEach((k, v) -> {
-                    update.delete(k);
-                });
+            for (BatchItem batchOp : batch.getOps()) {
+                if(batchOp.getClass() == PutOperationItem.class){
+                    val key = ((PutOperationItem) batchOp).getKey();
+                    val value = ((PutOperationItem) batchOp).getValue();
+                    update.put(key, value);
+                }
+
+                if(batchOp.getClass() == DeleteOperationItem.class){
+                    val key = ((DeleteOperationItem) batchOp).getKey();
+                    update.delete(key);
+                }
             }
             db.write(update);
             return true;
@@ -174,6 +178,11 @@ public class LevelDbStorage implements Storage<byte[], byte[]> {
 //		}
 		return batch;
 	}
+
+	public Batch batchWrite(){
+	    val batch = new Batch();
+	    return batch;
+    }
 	
 	public void BatchWrite(WriteBatch batch) {
 		try {
@@ -186,6 +195,22 @@ public class LevelDbStorage implements Storage<byte[], byte[]> {
 			}
 		}
 	}
+
+	public Entry<byte[], byte[]> last() throws IOException{
+	    val it = db.iterator();
+	    try {
+	        it.seekToLast();
+	        if(it.hasNext()){
+	            return it.peekNext();
+            }
+            else {
+                return null;
+            }
+        }
+        finally {
+	        it.close();
+        }
+    }
 	
 	public List<Entry<byte[], byte[]>> scan() {
 		DBIterator iterator = db.iterator();
@@ -256,4 +281,5 @@ public class LevelDbStorage implements Storage<byte[], byte[]> {
         }
         return null;
     }
+
 }

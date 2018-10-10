@@ -4,12 +4,11 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.uchain.core.consensus.ForkBase;
 import com.uchain.core.consensus.ForkItem;
+import com.uchain.core.consensus.ThreeTuple;
 import com.uchain.core.datastore.*;
 import com.uchain.core.datastore.keyvalue.ProducerStatus;
 import com.uchain.crypto.*;
 import com.uchain.main.Settings;
-import com.uchain.storage.ConnFacory;
-import com.uchain.storage.LevelDbStorage;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.val;
@@ -25,7 +24,7 @@ import java.util.stream.Collectors;
 @Setter
 public class LevelDBBlockChain implements BlockChain{
 	private static final Logger log = LoggerFactory.getLogger(LevelDBBlockChain.class);
-    private LevelDbStorage db;
+//    private LevelDbStorage db;
     private Settings settings;
     private ForkBase forkBase;
     
@@ -54,7 +53,7 @@ public class LevelDBBlockChain implements BlockChain{
     private List<Transaction> unapplyTxs;
 
     LevelDBBlockChain(Settings settings){
-    	this.db = ConnFacory.getInstance(settings.getChainSettings().getChain_dbDir());
+//    	this.db = ConnFacory.getInstance(settings.getChainSettings().getChain_dbDir());
     	this.settings = settings;
     	forkBase = new ForkBase(settings);
         genesisProducer = PublicKey.apply(new BinaryData(settings.getChainSettings().getChain_genesis_publicKey())); // TODO: read from settings
@@ -129,7 +128,8 @@ public class LevelDBBlockChain implements BlockChain{
         }
 
         if (forkBase.head() == null) {
-            forkBase.add(genesisBlock);
+            ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple = forkBase.add(genesisBlock);
+            confirmedOrSwitch(threeTuple);
         }
 
         assert(forkBase.head().getBlock().height() >= blockBase.head().getIndex());
@@ -147,7 +147,7 @@ public class LevelDBBlockChain implements BlockChain{
 
     @Override
     public BlockChainIterator iterator () {
-        return new BlockChainIterator();
+        return new BlockChainIterator(this);
     } 
     
     @Override
@@ -249,7 +249,7 @@ public class LevelDBBlockChain implements BlockChain{
     	if(forkItem == null) {
     		return null;
     	}else {
-    		return forkItem.getBlock();
+    		return getBlock(forkItem.getBlock().id());
     	}
     }
 
@@ -259,7 +259,7 @@ public class LevelDBBlockChain implements BlockChain{
         ForkItem forkHead = forkBase.head();producer.pubKeyHash();
 //        UInt160 to = UInt160.fromBytes(Crypto.hash160(CryptoUtil.listTobyte(new BinaryData("0345ffbf8dc9d8ff15785e2c228ac48d98d29b834c2e98fb8cfe6e71474d7f6322").getData())));
         Transaction minerTx = new Transaction(TransactionType.Miner, minerCoinFrom,
-                producer.pubKeyHash(), "", minerAward, UInt256.Zero(), new Long((latestHeader.getIndex() + 1)),
+                producer.pubKeyHash(), "", minerAward, UInt256.Zero(), forkHead.getBlock().height()+1L,
                new BinaryData(new ArrayList<>()), new BinaryData(new ArrayList<>()),0x01,null);
         try {
             dataBase.startSession();
@@ -322,13 +322,15 @@ public class LevelDBBlockChain implements BlockChain{
             }
         }
         if (forkBase.head().getBlock().id().equals(block.prev())) {
-            if (doApply == false) {   // check first !
-                forkBase.add(block);
+            if (doApply == false) {
+                ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple = forkBase.add(block);
+                confirmedOrSwitch(threeTuple);
                 inserted = true;
                 latestHeader = block.getHeader();
             }
             else if (applyBlock(block)) {
-                forkBase.add(block);
+                ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple = forkBase.add(block);
+                confirmedOrSwitch(threeTuple);
                 inserted = true;
                 latestHeader = block.getHeader();
             }
@@ -339,7 +341,8 @@ public class LevelDBBlockChain implements BlockChain{
         }
         else {
             log.info("received block added to minor fork chain. block "+block.height()+" "+block.id());
-            forkBase.add(block);
+            ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple = forkBase.add(block);
+            confirmedOrSwitch(threeTuple);
             inserted = true;
         }
         return inserted;
@@ -451,8 +454,10 @@ public class LevelDBBlockChain implements BlockChain{
         boolean isValid = true;
         int txsNum = txs.size();
         for (int i = 0; i < txsNum; i++) {
-            if(!verifyTransaction(txs.get(i)))
+            if(!verifyTransaction(txs.get(i))) {
                 isValid = false;
+                break;
+            }
         }
         return isValid;
     }
@@ -551,70 +556,7 @@ public class LevelDBBlockChain implements BlockChain{
 //        }
 //    }
     
-	private Map<UInt160, Map<UInt256, Fixed8>> calcBalancesInBlock(
-			Map<UInt160, Map<UInt256, Fixed8>> balances, Boolean spent, UInt160 address, Fixed8 amounts,
-			UInt256 assetId) {
-		Fixed8 amount = amounts;
-		if (spent)
-			amount = new Fixed8(0L - amounts.getValue());
-		if (balances.containsKey(address)) {
-			Map<UInt256, Fixed8> balance = balances.get(address);
-			Fixed8 amountBeforeTrans = balance.get(assetId);
-			Fixed8 amountAfterTrans = new Fixed8(amountBeforeTrans.getValue() + amount.getValue());
-			if (balance.containsKey(assetId))
-				balance.replace(assetId, amountAfterTrans);
-			else
-				balance.put(assetId, amountAfterTrans);
-		} else {
-			Map<UInt256, Fixed8> transRecord = new HashMap<UInt256, Fixed8>();
-			transRecord.put(assetId, amount);
-			balances.put(address, transRecord);
-		}
-		return balances;
-	}
-	
-	private Map<UInt256, Fixed8> updateBalancesInAccount(Map<UInt256, Fixed8> balancesInAccount,
-			Map<UInt256, Fixed8> balancesInLocalBlk) {
-		Map<UInt256, Fixed8> updateBalances = new HashMap<>();
-		balancesInAccount.forEach((assetId, balance) -> {
-			if (balancesInLocalBlk.containsKey(assetId)) {
-				updateBalances.put(assetId, balance.add(balancesInLocalBlk.get(assetId)));
-			} else
-				updateBalances.put(assetId, balance);
-		});
-		balancesInLocalBlk.forEach((localAssetId, localBalance) -> {
-			if (!balancesInAccount.containsKey(localAssetId)) {
-				updateBalances.put(localAssetId, localBalance);
-			}
-		});
-		return updateBalances;
-	}
 
-	private Map<UInt256, Fixed8> getBalancesWithOutAccount(Map<UInt256, Fixed8> balancesInLocalBlk){
-        HashMap<UInt256, Fixed8> balancesWithOutAccount = new HashMap<>();
-        balancesInLocalBlk.forEach((assetId, balance) -> {
-            if(balance.greater(Fixed8.Zero)) balancesWithOutAccount.put(assetId, balance);
-        });
-        return balancesWithOutAccount;
-    }
-    
-	private void updateAccout(Map<UInt160, Account> accounts, Transaction tx){
-        // TODO
-        return;
-    }
-	
-
-    private boolean forAllTransactionsVerify(List<Transaction> transactions) {
-        boolean flag = true;
-        for(Transaction transaction : transactions){
-            if(! verifyTransaction(transaction)) {
-                flag = false;
-                return flag;
-            }
-        }
-        return flag;
-    }
-	
     private boolean verifyRegisterNames(List<Transaction> transactions){
         boolean isValid = true;
         Set<String> newNames = new HashSet();
@@ -629,7 +571,7 @@ public class LevelDBBlockChain implements BlockChain{
                 } catch (UnsupportedEncodingException e) {
                     e.printStackTrace();
                 }
-                if(name.length()!=10){
+                if(name.length()!=10){// TODO: read "10" from config file
                     isValid = false;
                 }
                 if(newNames.contains(name)){
@@ -660,32 +602,6 @@ public class LevelDBBlockChain implements BlockChain{
         return isValid;
     }
 
-
-    private boolean forAllNewNamesVerify(ArrayList<String> names) {
-        boolean flag = true;
-        for(String name : names){
-            if(nameToAccountStore.get(name) == null) {
-                flag = false;
-                return flag;
-            }
-        }
-        return flag;
-    }
-    
-    private boolean forAllRegistersVerify(ArrayList<UInt160> registers) {
-        boolean flag = true;
-        for(UInt160 register : registers){
-            val account = accountStore.get(register);
-            if (account != null && account.getName() != "") {
-                flag = false;
-                return flag;
-            }
-        }
-        return flag;
-    }
-
-    
-
     boolean checkAmount(){
         return true;
     }
@@ -694,9 +610,7 @@ public class LevelDBBlockChain implements BlockChain{
     public Map<UInt256, Long> getBalance(UInt160 address){
         Map<UInt256, Long> resultMap = Maps.newHashMap();
         Map<UInt256, Fixed8> map = dataBase.getBalance(address);
-        map.forEach((k,v) ->{
-            resultMap.put(k,v.getValue());
-        });
+        map.forEach((k,v) -> resultMap.put(k,v.getValue()));
         return resultMap;
     }
 
@@ -704,5 +618,49 @@ public class LevelDBBlockChain implements BlockChain{
     public Account getAccount(UInt160 address) {
     	return dataBase.getAccount(address);
     }
-    
+
+
+    private void onConfirmed(Block block){
+        if (block.height() > 0) {
+            log.info("confirm block "+block.height()+" ("+block.id()+")");
+            dataBase.commit(block.height());
+            blockBase.add(block);
+        }
+    }
+
+    private void printChain(String title,List<ForkItem> fork){
+        StringBuilder str = new StringBuilder();
+        fork.forEach(item -> {
+            str.append(item.getBlock().id().toString().substring(0,6));
+            str.append("->");
+        });
+        str.toString().substring(0,str.length()-2);
+        log.info(title+": "+str);
+    }
+
+    private void onSwitch(List<ForkItem> from,List<ForkItem> to){
+        printChain("old chain", from);
+        printChain("new chain", to);
+        from.forEach(forkItem -> {
+            try {
+                dataBase.rollBack();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+        to.forEach(forkItem -> {
+            applyBlock(forkItem.getBlock());
+        });
+    }
+
+    private void confirmedOrSwitch(ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple){
+        if(threeTuple!=null){
+            if(threeTuple.first!=null){
+                onConfirmed(threeTuple.first);
+            }
+            if(threeTuple.second!=null){
+                onSwitch(threeTuple.second,threeTuple.third);
+            }
+        }
+    }
 }

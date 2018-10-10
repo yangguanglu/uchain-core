@@ -14,13 +14,6 @@ import com.uchain.storage.LevelDbStorage;
 
 
 public class Session {
-    private LevelDbStorage db;
-
-    public Session(){
-    }
-    public Session(LevelDbStorage db){
-        this.db = db;
-    }
 
     public Batch onSet(byte[] key, byte[] v, Batch batch) throws Exception{
         Batch newBatch = originOrNew(batch);

@@ -9,8 +9,10 @@ package com.uchain.core.datastore;
  * @Version: 1.0
  * *************************************************************/
 
+import com.uchain.storage.Batch;
 import com.uchain.storage.LevelDbStorage;
 import lombok.val;
+import org.iq80.leveldb.DB;
 import org.iq80.leveldb.WriteBatch;
 
 import java.io.IOException;
@@ -18,7 +20,7 @@ import java.math.BigInteger;
 
 public class RollSession extends Session{
 
-    private  LevelDbStorage db;
+    private DB db;
 
     private byte[] prefix;
 
@@ -30,7 +32,7 @@ public class RollSession extends Session{
 
     private boolean closed = false;
 
-    public RollSession(LevelDbStorage db,byte[] prefix,Integer level){
+    public RollSession(DB db,byte[] prefix,Integer level){
         this.db = db;
         this.prefix = prefix;
         this.level = level;
@@ -43,17 +45,10 @@ public class RollSession extends Session{
         item.fill(data);
     }
 
-    public void init(WriteBatch action) throws IOException {
+    public void init(WriteBatch batch){
         assert(!closed);
-
-        WriteBatch batch = db.createBatchWrite();
-        try{
             batch.put(sessionId,item.toBytes());
             //执行 action(batch) 原子操作
-            db.BatchWrite(batch);
-        }finally {
-            batch.close();
-        }
     }
 
     public void close(){
@@ -74,26 +69,20 @@ public class RollSession extends Session{
         }
     }*/
 
-    public void rollBack(WriteBatch onRollBack) throws IOException {
+    public void rollBack(WriteBatch batch){
         assert(!closed);
-        WriteBatch batch = db.createBatchWrite();
-        try {
             item.getInsert().forEach((k, v) -> batch.delete(k.getBytes()));
             item.getUpdate().forEach((k, v) -> batch.put(k.getBytes(), v));
             item.getDelete().forEach((k, v) -> batch.put(k.getBytes(), v));
             batch.delete(sessionId);
             //待驗證
             //onRollBack(batch) 这步未翻译
-            db.BatchWrite(batch);
-        }finally {
-            batch.close();
-        }
     }
     @Override
-    public WriteBatch onSet(byte[] key, byte[] v, WriteBatch batch){
+    public Batch onSet(byte[] key, byte[] v, Batch batch){
         assert(!closed);
 
-        WriteBatch newBatch = originOrNew(batch);
+        Batch newBatch = originOrNew(batch);
         newBatch.put(key,v);
 
         Boolean modified = true;
@@ -121,9 +110,9 @@ public class RollSession extends Session{
 
     }
     @Override
-    public WriteBatch onDelete(byte[] key,WriteBatch batch){
+    public Batch onDelete(byte[] key,Batch batch){
         assert (!closed);
-        WriteBatch newBatch = originOrNew(batch);
+        Batch newBatch = originOrNew(batch);
         newBatch.delete(key);
 
         Boolean modified = false;

@@ -4,7 +4,7 @@ import com.uchain.core.Block;
 import com.uchain.core.BlockHeader;
 import com.uchain.core.datastore.keyvalue.*;
 import com.uchain.crypto.UInt256;
-import com.uchain.main.BlockBaseSetting;
+import com.uchain.main.BlockBaseSettings;
 import com.uchain.storage.Batch;
 import com.uchain.storage.ConnFacory;
 import com.uchain.storage.LevelDbStorage;
@@ -16,7 +16,7 @@ import lombok.Setter;
 public class BlockBase{
 
     LevelDbStorage db;
-    BlockBaseSetting settings;
+    BlockBaseSettings settings;
 
     private BlockStore blockStore;
 
@@ -24,7 +24,7 @@ public class BlockBase{
 
     private HeightStore heightStore;
 
-    public BlockBase(BlockBaseSetting settings){
+    public BlockBase(BlockBaseSettings settings){
         this.settings = settings;
         this.db = ConnFacory.getInstance(settings.getDir());
         this.blockStore = new BlockStore(db, settings.getCacheSize(),DataStoreConstant.BlockPrefix, new UInt256Key(),
@@ -38,10 +38,11 @@ public class BlockBase{
 
     public  void add (Block block){
         if (head().id().toString().equals(block.prev().toString())){
-            Batch batch = new Batch();
-            blockStore.set(block.id(), block, batch);
-            heightStore.set(block.height(), block.id(), batch);
-            headBlkStore.set(block.getHeader(), batch);
+            Batch batch = db.batchWrite();
+                blockStore.set(block.id(), block, batch);
+                heightStore.set(block.height(), block.id(), batch);
+                headBlkStore.set(block.getHeader(), batch);
+                db.applyBatch(batch);
         }
         else throw new IllegalArgumentException("requirement failed");
     }

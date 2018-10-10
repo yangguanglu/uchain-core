@@ -1,13 +1,11 @@
 package com.uchain.network.message;
 
-import java.math.BigInteger;
-import java.util.Arrays;
-
 import com.uchain.common.Serializabler;
 import com.uchain.core.Block;
-
 import lombok.Getter;
 import lombok.Setter;
+
+import java.math.BigInteger;
 
 public class BlockMessageImpl {
 	@Getter
@@ -61,6 +59,23 @@ public class BlockMessageImpl {
 			return new MessagePack(messageType, Serializabler.toBytes(block), null);
 		}
 	}
+
+    @Getter
+    @Setter
+    public static class BlocksMessage implements PackMessage {
+        private MessageType messageType;
+        private BlocksPayload blocksPayload;
+
+        public BlocksMessage(BlocksPayload blocksPayload) {
+            this.messageType = MessageType.Blocks;
+            this.blocksPayload = blocksPayload;
+        }
+
+        @Override
+        public MessagePack pack() {
+            return new MessagePack(messageType, Serializabler.toBytes(blocksPayload), null);
+        }
+    }
 
 	@Getter
 	@Setter

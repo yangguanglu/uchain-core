@@ -13,6 +13,7 @@ import com.uchain.core.datastore.keyvalue.IntKey;
 import com.uchain.storage.Batch;
 import com.uchain.storage.LevelDbStorage;
 import lombok.val;
+import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.WriteBatch;
 
@@ -23,13 +24,13 @@ import java.util.List;
 
 public class SessionManger {
 
-    private LevelDbStorage db;
+    private DB db;
 
     private byte[] prefix;
 
     private RollSession session;
 
-    private List<RollSession> sessions;
+    private List<RollSession> sessions = new ArrayList<>();
 
     private int level = 1;
 
@@ -37,7 +38,7 @@ public class SessionManger {
 
     private IntKey util = new IntKey();
 
-    public SessionManger(LevelDbStorage db/*, RollSession session*/){
+    public SessionManger(DB db/*, RollSession session*/){
         this.db = db;
         this.prefix = Session.byteMergerAll(util.toBytes(StoreType.getStoreType(StoreType.Data)), util.toBytes(DataType.getDataType(DataType.Session)));
         /*this.session = new RollSession(db,prefix,level);
@@ -49,7 +50,7 @@ public class SessionManger {
         return level;
     }
 
-    public List getLevels(){
+    public List<Integer> getLevels(){
         List res = new ArrayList();
         sessions.forEach(session1 -> {
             res.add(session1.getLevel());
@@ -58,7 +59,7 @@ public class SessionManger {
     }
 
     private void init(){
-        DBIterator iterator = db.db.iterator();
+        DBIterator iterator = db.iterator();
         try {
             iterator.seek(prefix);
 
@@ -74,14 +75,8 @@ public class SessionManger {
             }
         }
 
-        Session res=null;
-        for(RollSession ss:sessions){
-            if(ss.getLevel() == level -1) {
-                res = ss;
-                break;
-            }
-        }
-        assert(res != null);
+        RollSession res = sessions.get(sessions.size()-1);
+        assert(res.getLevel() != level);
     }
 
     private Boolean reloadSessions(DBIterator iterator){
@@ -104,7 +99,7 @@ public class SessionManger {
         }
     }
     public Batch beginSet(byte[] k, byte[] v, Batch batch) throws Exception{
-        Session session = sessions.get(sessions.size());
+        Session session = sessions.get(sessions.size() -1);
         if(null == session){
             session = defaultSession;
         }
@@ -114,7 +109,7 @@ public class SessionManger {
     }
 
     public Batch beginDelete(byte[] k,Batch batch){
-        Session session = sessions.get(sessions.size());
+        Session session = sessions.get(sessions.size() -1);
         if(null == session){
             session = defaultSession;
         }
@@ -123,15 +118,15 @@ public class SessionManger {
     }
     //關閉會話
     public void commit(){
-        sessions.forEach(session1 -> {
-            sessions.remove(0);
-            session1.close();
-        });
+        RollSession session = sessions.get(0);
+        if(session == null) return;
+        sessions.remove(0);
+        session.close();
     }
     //關閉當前版本以前的會話
     public void commit(int revision){
         sessions.forEach(session1 -> {
-            if(level >= session1.getLevel()){
+            if(revision <= session1.getLevel()){
                 sessions.remove(session1);
                 session1.close();
             }
@@ -141,16 +136,30 @@ public class SessionManger {
 
     public void rollBack() throws IOException{
         RollSession session1 = sessions.get(sessions.size() - 1 );
-        WriteBatch batch = db.createBatchWrite();
-        session1.rollBack(batch);
-        batch.put(prefix,util.toBytes(level-1));
+        WriteBatch batch = db.createWriteBatch();
+        try {
+            session1.rollBack(batch);
+            batch.put(prefix,util.toBytes(level-1));
+            db.write(batch);
+            sessions.remove(session1);
+            level = level -1;
+        }
+        finally {
+            batch.close();
+        }
     }
 
     public RollSession newSession() throws IOException{
         RollSession sessionRoll = new RollSession(db, prefix, level);
-        WriteBatch batch = db.createBatchWrite();
-        batch.put(prefix,new BigInteger(String.valueOf(level+1)).toByteArray());
-        sessionRoll.init(batch);
+        WriteBatch batch = db.createWriteBatch();
+        try{
+            sessionRoll.init(batch);
+            batch.put(prefix,new BigInteger(String.valueOf(level+1)).toByteArray());
+            db.write(batch);
+        }
+        finally {
+            batch.close();
+        }
 
         sessions.add(sessionRoll);
         level += 1;

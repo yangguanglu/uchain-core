@@ -10,6 +10,7 @@ package com.uchain.core.datastore;
  * *************************************************************/
 
 import com.uchain.common.Serializabler;
+import com.uchain.common.Serializable;
 import com.uchain.util.Utils;
 import lombok.val;
 
@@ -17,7 +18,7 @@ import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 
-public class SessionItem extends Serializabler {
+public class SessionItem implements Serializable {
 
     private Map<ByteArrayKey,byte[]> insert = new HashMap();
     private Map<ByteArrayKey,byte[]> update = new HashMap();
@@ -81,8 +82,8 @@ public class SessionItem extends Serializabler {
         Utils.writeVarint(dict.size(),os);
         dict.forEach((k,v)->{
             try {
-                os.write(k.getBytes());
-                os.write(v);
+                Serializabler.writeByteArray(os, k.getBytes());
+                Serializabler.writeByteArray(os, v);
             }catch (IOException e){
                 e.printStackTrace();
             }

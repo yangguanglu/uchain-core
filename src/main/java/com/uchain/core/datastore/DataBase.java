@@ -16,8 +16,8 @@ import com.uchain.core.datastore.keyvalue.UInt160Key;
 import com.uchain.crypto.Fixed8;
 import com.uchain.crypto.UInt160;
 import com.uchain.crypto.UInt256;
-import com.uchain.main.DataBaseSetting;
-import com.uchain.storage.ConnFacory;
+import com.uchain.main.DataBaseSettings;
+import com.uchain.storage.Batch;
 import com.uchain.storage.LevelDbStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,14 +28,14 @@ import java.util.Map;
 public class DataBase {
 
     private static final Logger log = LoggerFactory.getLogger(DataBase.class);
-    private DataBaseSetting settings;
+    private DataBaseSettings settings;
     private LevelDbStorage db;
 
     private AccountStore accountStore;
     private NameToAccountStore nameToAccountStore;
 
-    public DataBase(DataBaseSetting settings){
-        this.db = ConnFacory.getInstance(settings.getDir());
+    public DataBase(DataBaseSettings settings){
+        this.db = LevelDbStorage.open(settings.getDir());
         this.settings = settings;
         init();
     }
@@ -60,7 +60,15 @@ public class DataBase {
     }
 
     public Boolean setAccount(UInt160 fromUInt160,Account fromAccount,UInt160 toUInt160,Account toAccount){
-        return true;
+        try {
+            Batch batch = db.batchWrite();
+            accountStore.set(fromUInt160,fromAccount,batch);
+            accountStore.set(toUInt160,toAccount, batch);
+            return db.applyBatch(batch);
+        }catch (Exception e){
+            log.error("SetAccount Failed!",e);
+            return false;
+        }
     }
 
 
@@ -70,15 +78,15 @@ public class DataBase {
     }
 
     public void startSession() throws IOException {
-        db.getSessionManger().newSession();
+        db.newSession();
     }
 
     public void rollBack()throws IOException{
-        db.getSessionManger().rollBack();
+        db.rollBack();
     }
 
     public void commit( int revision){
-        db.getSessionManger().commit(revision);
+        db.commit(revision);
     }
 
     public void commit(){

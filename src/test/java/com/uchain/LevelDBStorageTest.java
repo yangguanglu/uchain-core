@@ -27,7 +27,7 @@ public class LevelDBStorageTest {
 	@Test
 	public void testSet(){
 		try {
-			assert (storage.set("testSet".getBytes(), "testSetValue".getBytes()));
+			assert (storage.set("testSet".getBytes(), "testSetValue".getBytes(), storage.batchWrite()));
 		}catch (Exception e){
 			e.printStackTrace();
 		}
@@ -38,7 +38,7 @@ public class LevelDBStorageTest {
 		try {
 			val key = "testGet".getBytes();
 			val valueString = "testGetValue".getBytes();
-			assert (storage.set(key, valueString));
+			assert (storage.set(key, valueString, storage.batchWrite()));
 			val value = storage.get(key);
 			assert (value != null);
 			assert (new String(value).equals(new String(valueString)));
@@ -53,11 +53,11 @@ public class LevelDBStorageTest {
 			val key = "testUpdate".getBytes();
 			val valueString = "testUpdateValue";
 			val newValueString = "testUpdateValueNew";
-			assert (storage.set(key, valueString.getBytes()));
+			assert (storage.set(key, valueString.getBytes(), storage.batchWrite()));
 			val value = storage.get(key);
 			assert (value != null);
 			assert (new String(value).equals(valueString));
-			assert (storage.set(key, newValueString.getBytes()));
+			assert (storage.set(key, newValueString.getBytes(), storage.batchWrite()));
 			val newValue = storage.get(key);
 			assert (newValue != null);
 			assert (new String(newValue).equals(newValueString));
@@ -76,9 +76,9 @@ public class LevelDBStorageTest {
 	public void testDelete(){
 		val key = "testDelete".getBytes();
 		val value = "testDeleteValue".getBytes();
-		assert (storage.set(key, value));
+		assert (storage.set(key, value, storage.batchWrite()));
 		assert (storage.get(key) != null);
-		storage.delete(key);
+		storage.delete(key, storage.batchWrite());
 		assert (storage.get(key) == null);
 	}
 	
@@ -90,7 +90,7 @@ public class LevelDBStorageTest {
 	    	val value = "value"+i;
 	    	linkedHashMap.put(key, value);
 	    	if (storage.get(key.getBytes()) == null) {
-		        assert(storage.set(key.getBytes(), value.getBytes()));
+		        assert(storage.set(key.getBytes(), value.getBytes(), storage.batchWrite()));
 		    }
 		}
 	  }

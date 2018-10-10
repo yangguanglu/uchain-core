@@ -43,10 +43,10 @@ public class ForkBase {
 	
 	
 	public ForkBase(Settings settings) {
-		String path = settings.getChainSettings().getChain_forkDir();
+		String path = settings.getForkBaseSettings().getDir();
 		this.db = ConnFacory.getInstance(path);
 		this.settings = settings;
-        forkStore = new ForkItemStore(db,settings.getChainForkBaseCacheSize(),DataStoreConstant.ForkItemPrefix,new UInt256Key(),new ForkItemValue());
+        forkStore = new ForkItemStore(db,settings.getForkBaseSettings().getCacheSize(),DataStoreConstant.ForkItemPrefix,new UInt256Key(),new ForkItemValue());
 		init();
 	}
 
@@ -96,8 +96,8 @@ public class ForkBase {
 	 * @param block
 	 * @return
 	 */
-	public TwoTuple<List<ForkItem>,Boolean> add(Block block) {
-		TwoTuple<List<ForkItem>,Boolean> twoTuple = null;
+	public ThreeTuple<Block,List<ForkItem>, List<ForkItem>> add(Block block) {
+        ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple = null;
 		Map<PublicKey, Integer> lph = Maps.newHashMap();
 		if(_head == null) {
 			log.info("启动项目时，加入所有见证人");
@@ -106,7 +106,7 @@ public class ForkBase {
 				lph.put(PublicKey.apply(new BinaryData(witness.getPubkey())), 0);
 			}
             ForkItem item = makeItem(block,lph, true);
-            twoTuple = add(item);
+            threeTuple = add(item);
 		}else {
 			if(!indexById.containsKey(block.id())) {
                 ForkItem prev = indexById.get(block.prev());
@@ -114,18 +114,16 @@ public class ForkBase {
                     Map<PublicKey, Integer> prodHeights = prev.getLastProducerHeight();
                     Boolean master = _head.id().equals(block.prev());
                     ForkItem item = makeItem(block,prodHeights, master);
-                    twoTuple = add(item);
+                    threeTuple = add(item);
                 }
 			}
 		}
-		return twoTuple;
+		return threeTuple;
 	}
 
 	private ForkItem makeItem(Block block,Map<PublicKey,Integer> heights,Boolean master){
 	    Map<PublicKey,Integer> lph = Maps.newHashMap();
-        heights.forEach((key,value) ->{
-            lph.put(key,value);
-        });
+        heights.forEach((key,value) -> lph.put(key,value));
         PublicKey pub = block.getHeader().getProducer();
         if(lph.containsKey(pub)){
             lph.put(pub,block.height());
@@ -138,27 +136,33 @@ public class ForkBase {
      * @param item
      * @return
      */
-	private TwoTuple<List<ForkItem>, Boolean> add(ForkItem item) {
-		List<ForkItem> saveBlocks = Lists.newArrayList();
-		TwoTuple<List<ForkItem>,Boolean> twoTuple;
+	private ThreeTuple<Block,List<ForkItem>, List<ForkItem>> add(ForkItem item) {
+        ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple;
 		if (insert(item)) {
+            Block block = null;
+            TwoTuple<List<ForkItem>, List<ForkItem>> twoTupleTemp = null;
             TwoTuple<ForkItem,ForkItem> twoItem = maybeReplaceHead();
             if (twoItem.second.prev().equals(twoItem.first.id())) {
-                saveBlocks = removeConfirmed(item.confirmedHeight());
+                block = removeConfirmed(item.confirmedHeight());
             } else if (!twoItem.second.id().equals(twoItem.first.id())) {
-                switchAdd(twoItem.first, twoItem.second);
+                twoTupleTemp = switchAdd(twoItem.first, twoItem.second);
             }
-            twoTuple = new TwoTuple<>(saveBlocks,true);
+            if(twoTupleTemp!=null) {
+                threeTuple = new ThreeTuple(block, twoTupleTemp.first, twoTupleTemp.second);
+            }else{
+                threeTuple = new ThreeTuple(block, null, null);
+            }
 		}else {
-			twoTuple =new TwoTuple<>(saveBlocks,false);
+            threeTuple = new ThreeTuple(null, null, null);
 		}
-		return twoTuple;
+		return threeTuple;
 	}
 
 	private TwoTuple maybeReplaceHead(){
         TwoTuple<ForkItem,ForkItem> twoTuple;
         ForkItem old = _head;
         _head = indexById.get(indexByConfirmedHeight.head().third);
+        assert(_head != null);
         if(old ==null){
             twoTuple =new TwoTuple<>(_head,_head);
         }else{
@@ -171,7 +175,7 @@ public class ForkBase {
 	 * @param from
 	 * @param to
 	 */
-	private void switchAdd(ForkItem from,ForkItem to) {
+	private TwoTuple<List<ForkItem>, List<ForkItem>> switchAdd(ForkItem from,ForkItem to) {
 		TwoTuple<List<ForkItem>, List<ForkItem>> twoTuple = getForks(from, to);
 		List<ForkItem> items = Lists.newArrayList();
 		Batch batch = new Batch();
@@ -190,6 +194,7 @@ public class ForkBase {
 //        db.BatchWrite(batch);
         items.forEach(item -> updateIndex(item));
         //onSwitch(originFork, newFork);
+        return twoTuple;
 	}
 
 	public void close() {
@@ -212,9 +217,8 @@ public class ForkBase {
 	 * @param height
 	 * @return 
 	 */
-	private List<ForkItem> removeConfirmed(int height) {
-		List<ForkItem> saveBlocks = Lists.newArrayList();
-		List<ForkItem> items = new ArrayList<ForkItem>();
+	private Block removeConfirmed(int height) {
+        Block block = null;
 		ThreeTuple<Integer, Boolean, UInt256> threeTuple = indexByHeight.head();
 		if(threeTuple!=null){
 			Integer first = 0;
@@ -228,8 +232,9 @@ public class ForkBase {
 			if(first < height){
 				ForkItem item = indexById.get(threeTuple.third);
 				if(item.isMaster()) {
-					items.add(item);
-					saveBlocks.add(item);
+//					items.add(item);
+//					saveBlocks.add(item);
+                    block = item.getBlock();
 				}
 				Batch batch = new Batch();
                 forkStore.delete(item.getBlock().id(), batch);
@@ -237,7 +242,7 @@ public class ForkBase {
                 deleteIndex(item);
             }
 		}
-		return saveBlocks;
+		return block;
 	}
 
 	/**

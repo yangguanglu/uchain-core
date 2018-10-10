@@ -13,6 +13,7 @@ import com.uchain.common.Serializabler;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.Arrays;
 
 public class ByteArrayKey extends Serializabler {
@@ -29,10 +30,8 @@ public class ByteArrayKey extends Serializabler {
         if( obj == this){
             return true;
         }
-        if (obj instanceof byte[]){
-           if(this.bytes == obj){
-               return true;
-           }
+        if (obj instanceof ByteArrayKey){
+           return Arrays.equals(this.bytes, ((ByteArrayKey)obj).bytes);
         }
         return false;
     }
@@ -42,7 +41,7 @@ public class ByteArrayKey extends Serializabler {
     }
 
     public void serialize(DataOutputStream os) throws IOException {
-        os.writeBytes(bytes.toString());
+        Serializabler.writeByteArray(os, bytes);
     }
 
 }

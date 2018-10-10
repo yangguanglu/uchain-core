@@ -35,14 +35,12 @@ public class Settings {
 		this.chainSettings = new ChainSettings(resource.getString("chain_dbDir"), resource.getString("chain_forkDir"),
 				resource.getString("chain_miner"), Long.valueOf(resource.getString("chain_genesis_timeStamp")),
 				resource.getString("chain_genesis_publicKey"), resource.getString("chain_genesis_privateKey"));
-        this.chainForkBaseDir = resource.getString("chain_forkBase_dir");
-        this.chainForkBaseCacheEnabled = Boolean.valueOf(resource.getString("chain_forkBase_cacheEnabled"));
-        this.chainForkBaseCacheSize = Integer.parseInt(resource.getString("chain_forkBase_cacheSize"));
-
-        this.blockBaseSetting = new BlockBaseSetting(resource.getString("chain_blockBase_dir"),Boolean.valueOf(resource.getString("chain_blockBase_cacheEnabled")),
+        this.blockBaseSetting = new BlockBaseSettings(resource.getString("chain_blockBase_dir"),Boolean.valueOf(resource.getString("chain_blockBase_cacheEnabled")),
                 Integer.parseInt(resource.getString("chain_blockBase_cacheSize")));
-        this.dataBaseSetting = new DataBaseSetting(resource.getString("chain_dataBase_dir"),Boolean.valueOf(resource.getString("chain_dataBase_cacheEnabled")),
+        this.dataBaseSetting = new DataBaseSettings(resource.getString("chain_dataBase_dir"),Boolean.valueOf(resource.getString("chain_dataBase_cacheEnabled")),
                 Integer.parseInt(resource.getString("chain_dataBase_cacheSize")));
+        this.forkBaseSettings = new ForkBaseSettings(resource.getString("chain_forkBase_dir"),Boolean.valueOf(resource.getString("chain_forkBase_cacheEnabled")),
+                Integer.parseInt(resource.getString("chain_forkBase_cacheSize")));
 		String initialWitness = resource.getString("initialWitness");
 		int produceInterval = Integer.parseInt(resource.getString("produceInterval"));
 		int acceptableTimeError = Integer.parseInt(resource.getString("acceptableTimeError").trim());
@@ -70,12 +68,9 @@ public class Settings {
 	private ChainSettings chainSettings;
 	private ConsensusSettings consensusSettings;
 
-    private String chainForkBaseDir;
-    private boolean chainForkBaseCacheEnabled;
-    private Integer chainForkBaseCacheSize;
-
-    private BlockBaseSetting blockBaseSetting;
-    private DataBaseSetting dataBaseSetting;
+    private BlockBaseSettings blockBaseSetting;
+    private DataBaseSettings dataBaseSetting;
+    private ForkBaseSettings forkBaseSettings;
 
 	private static List<Witness> getWitness(String json) {
 		List<Witness> list = new ArrayList<Witness>();

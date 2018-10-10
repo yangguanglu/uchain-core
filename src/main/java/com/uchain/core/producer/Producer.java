@@ -13,6 +13,9 @@ import com.uchain.crypto.PublicKey;
 import com.uchain.crypto.UInt256;
 import com.uchain.main.ConsensusSettings;
 import com.uchain.main.Witness;
+import lombok.val;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 import java.time.Duration;
@@ -20,7 +23,7 @@ import java.time.Instant;
 import java.util.*;
 
 public class Producer extends AbstractActor {
-
+    private static final Logger log = LoggerFactory.getLogger(Producer.class);
 	private ConsensusSettings settings;
 	private ActorRef peerManager;
 	private BlockChain chain;
@@ -39,7 +42,7 @@ public class Producer extends AbstractActor {
 	private boolean canProduce = false;
 
 	@Override
-	public void preStart() throws Exception {
+	public void preStart() {
 		ProduceTask task = new ProduceTask(this, peerManager, canProduce);
 		getContext().system().scheduler().scheduleOnce(Duration.ZERO, task, getContext().system().dispatcher());
 	}
@@ -74,22 +77,58 @@ public class Producer extends AbstractActor {
 	  */
 	private ProduceState tryProduce(Long now) {
 		Long next = nextBlockTime(1);
+        if (next - now <= settings.getProduceInterval()
+                && chain.isProducingBlock() == false) {
+            val witness = getWitness(nextProduceTime(now, next));
+            if (!(witness.getPrivkey()==null)) {
+                log.info("startProduceBlock");
+                chain.startProduceBlock(PublicKey.apply(new BinaryData(witness.getPubkey())));
+                txPool.forEach((k,v) -> chain.produceBlockAddTransaction(v));
+                txPool.clear();
+            }
+        }
 		if (now + settings.getAcceptableTimeError() < next) {
 			return new NotYet(next,now);
 		}else {
-		    Witness witness = getWitness(nextProduceTime(now, next));
-		    if("".equals(witness.getPrivkey())) {
-		    	return new NotMyTurn(witness.getName(), PublicKey.apply(new BinaryData(witness.getPubkey())));
-		    }else {
-				Collection<Transaction> valueCollection = txPool.values();
-				List<Transaction> txs = new ArrayList<>(valueCollection);
-				Block block = chain.produceBlock(PublicKey.apply(new BinaryData(witness.getPubkey())),
-						PrivateKey.apply(new BinaryData(witness.getPrivkey())), nextProduceTime(now, next), txs);
-				txPool.clear();
-				return new Success(block, witness.getName(), now);
-		    }
+//		    Witness witness = getWitness(nextProduceTime(now, next));
+//		    if("".equals(witness.getPrivkey())) {
+//		    	return new NotMyTurn(witness.getName(), PublicKey.apply(new BinaryData(witness.getPubkey())));
+//		    }else {
+//				Collection<Transaction> valueCollection = txPool.values();
+//				List<Transaction> txs = new ArrayList<>(valueCollection);
+//				Block block = chain.produceBlock(PublicKey.apply(new BinaryData(witness.getPubkey())),
+//						PrivateKey.apply(new BinaryData(witness.getPrivkey())), nextProduceTime(now, next), txs);
+//				txPool.clear();
+//				return new Success(block, witness.getName(), now);
+//		    }
+
+
+
+            if (nextProduceTime(now, next) > next) {
+                //println(s"some blocks skipped")
+            }
+            Witness witness = getWitness(nextProduceTime(now, next));
+            if (witness.getPrivkey()!=null) {
+                return new NotMyTurn(witness.getName(), PublicKey.apply(new BinaryData(witness.getPubkey())));
+            }else {
+                Collection<Transaction> txs = txPool.values();
+                Block block = chain.produceBlockFinalize(PublicKey.apply(new BinaryData(witness.getPubkey())), PrivateKey.apply(new BinaryData(witness.getPrivkey())), nextProduceTime(now, next));
+                if (block!=null) {
+                    getSelf().tell(new BlockAcceptedMessage(block),ActorRef.noSender());
+                }
+                return new Success(block, witness.getName(), now);
+            }
+
 		}
 	}
+
+    private void removeTransactionsInBlock(Block block) {
+        block.getTransactions().forEach(tx->{
+            if(txPool.containsKey(tx.id())){
+                txPool.remove(tx.id());
+            }
+        });
+    }
 	
 	/**
 	 * 根据上一个区块时间，获取下一个区块期望时间
@@ -118,6 +157,7 @@ public class Producer extends AbstractActor {
 			return slot * settings.getProduceInterval();
 		}
 	}
+
 	/**
 	 * 获取给定时间点的生产者
 	 * @param timeMs time from 1970 in ms
@@ -162,7 +202,8 @@ public class Producer extends AbstractActor {
 
 	@Override
 	public Receive createReceive() {
-		return receiveBuilder().match(Object.class, msg -> {
+		return receiveBuilder().match(BlockAcceptedMessage.class, msg -> {
+            removeTransactionsInBlock(msg.getBlock());
 		}).build();
 	}
 

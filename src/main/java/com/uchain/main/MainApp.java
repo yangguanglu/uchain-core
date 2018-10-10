@@ -50,9 +50,9 @@ public class MainApp extends ResourceConfig {
 
 		LevelDBBlockChain chain = LevelDBBlockChainBuilder.populate(settings);
 
-		ActorRef nodeActor = uchainSystem.actorOf(Node.props(chain, peerHandlerActor), "nodeManager");
+        ActorRef producerActor = uchainSystem.actorOf(Producer.props(settings.getConsensusSettings(),chain,peerHandlerActor));
 
-		ActorRef producerActor = uchainSystem.actorOf(Producer.props(settings.getConsensusSettings(),chain,peerHandlerActor));
+        ActorRef nodeActor = uchainSystem.actorOf(Node.props(chain, peerHandlerActor,producerActor), "nodeManager");
 
 		uchainSystem.actorOf(NetworkManager.props(settings,peerHandlerActor,nodeActor), "networkManager");
 

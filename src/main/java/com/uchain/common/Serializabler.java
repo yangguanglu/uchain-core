@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.uchain.crypto.Fixed8;
 import com.uchain.crypto.UInt256;
 
+import com.uchain.util.Utils;
 import lombok.val;
 
 public class Serializabler {
@@ -56,7 +57,7 @@ public class Serializabler {
 	}
 
 	public static void writeByteArray(DataOutputStream os, byte[] bytes) throws IOException {
-		os.writeInt(bytes.length);
+		Utils.writeVarint(bytes.length,os);
 		os.write(bytes);
 	}
 

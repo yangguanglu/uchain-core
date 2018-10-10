@@ -1,6 +1,8 @@
 package com.uchain.storage;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 public interface Storage<Key, Value> {
     boolean containsKey(Key key);
@@ -22,6 +24,10 @@ public interface Storage<Key, Value> {
     void rollBack();
 
 	void close();
+
+    Batch batchWrite();
+
+    Map.Entry<byte[], byte[]> last() throws IOException;
 
 	Integer revision();
 
