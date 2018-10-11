@@ -123,7 +123,10 @@ public class SessionManger {
     }
 
     public void commit(){
-        RollSession session = sessions.get(0);
+        RollSession session = null;
+        if(sessions.size()!=0) {
+            session = sessions.get(0);
+        }
         if(session == null) return;
         sessions.remove(0);
         session.close();
@@ -140,6 +143,9 @@ public class SessionManger {
     }
 
     public void rollBack() throws IOException{
+        if(sessions.size() <= 0){
+            return;
+        }
         RollSession session1 = sessions.get(sessions.size() - 1 );
         WriteBatch batch = db.createWriteBatch();
         try {

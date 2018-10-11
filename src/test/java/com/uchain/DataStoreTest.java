@@ -10,7 +10,10 @@ package com.uchain;
  * *************************************************************/
 
 import com.uchain.core.BlockHeader;
+import com.uchain.core.datastore.DataStoreConstant;
 import com.uchain.core.datastore.HeaderStore;
+import com.uchain.core.datastore.keyvalue.BlockHeaderValue;
+import com.uchain.core.datastore.keyvalue.UInt256Key;
 import com.uchain.crypto.BinaryData;
 import com.uchain.crypto.PrivateKey;
 import com.uchain.crypto.PublicKey;
@@ -32,7 +35,7 @@ public class DataStoreTest {
     private static final List<LevelDbStorage>  dbs = new ArrayList<LevelDbStorage>();
 
     public static LevelDbStorage openDB(String dir){
-        LevelDbStorage db = null;//LevelDbStorage.open(dir);
+        LevelDbStorage db = LevelDbStorage.open(dir);
         if (!dirs.contains(dir)) {
             dirs.add(dir);
         }
@@ -59,7 +62,6 @@ public class DataStoreTest {
             e.printStackTrace();
         }
     }
-    private static LevelDbStorage storage;
 
     private static BlockHeader createBlockHeader(){
         try {
@@ -77,30 +79,31 @@ public class DataStoreTest {
     @Test
     public void testCommitRollBack(){
         try{
-            LevelDbStorage db = DataStoreTest.openDB("test_RollBack");
-            storage = ConnFacory.getInstance("\\.\\test_RollBack");
-            HeaderStore store = new HeaderStore(storage, 10,null,null,null);
+            LevelDbStorage db = DataStoreTest.openDB("test_rollBack");
+            HeaderStore store = new HeaderStore(db, 10, DataStoreConstant.HeaderPrefix,
+                new UInt256Key(), new BlockHeaderValue());
             BlockHeader blk1 = createBlockHeader();
             assert (blk1 != null);
             System.out.println("blk1===================="+blk1.id());
-            db.getSessionManger().newSession();
+            db.newSession();
             store.set(blk1.id(), blk1,null);
             assert(store.get(blk1.id()).equals(blk1));
-            db.getSessionManger().rollBack();
+            db.rollBack();
             assert(store.get(blk1.id()) == null);
             BlockHeader blk2 = createBlockHeader();
             System.out.println("blk2===================="+blk2.id());
+            db.newSession();
             store.set(blk2.id(), blk2,null);
             db.commit();
             assert(store.get(blk2.id()).equals(blk2));
-            db.getSessionManger().rollBack();
+            db.rollBack();
             assert(store.get(blk2.id()).equals(blk2));
-            db.getSessionManger().newSession();
+            db.newSession();
             BlockHeader blk3 = createBlockHeader();
             System.out.println("blk3===================="+blk3.id());
             store.set(blk3.id(), blk3,null);
             assert(store.get(blk3.id()).equals(blk3));
-            db.getSessionManger().rollBack();
+            db.rollBack();
             assert(store.get(blk2.id()).equals(blk2));
             assert(store.get(blk3.id()) == null);
         }catch (Exception e){

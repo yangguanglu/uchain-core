@@ -2,7 +2,6 @@ package com.uchain.core.consensus;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.uchain.common.Serializabler;
 import com.uchain.core.Block;
 import com.uchain.core.datastore.DataStoreConstant;
 import com.uchain.core.datastore.ForkItemStore;
@@ -19,11 +18,9 @@ import com.uchain.storage.ConnFacory;
 import com.uchain.storage.LevelDbStorage;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.val;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,11 +36,11 @@ public class ForkBase {
 	private ForkItem _head;
 	private LevelDbStorage db;
 	private Map<UInt256, ForkItem> indexById = new HashMap<>();
-	private MultiMap<UInt256, UInt256> indexByPrev = new MultiMap<UInt256, UInt256>();		  
+	private MultiMap<UInt256, UInt256> indexByPrev = new MultiMap<UInt256, UInt256>();
 	private SortedMultiMap2<Integer,Boolean,UInt256> indexByHeight = new SortedMultiMap2<>("asc","reverse");
 	private SortedMultiMap2<Integer,Integer,UInt256> indexByConfirmedHeight = new SortedMultiMap2<>("reverse","reverse");
-	
-	
+
+
 	public ForkBase(Settings settings) {
         this.settings = settings;
         String path = settings.getChainSettings().getForkBaseSettings().getDir();
@@ -59,7 +56,7 @@ public class ForkBase {
 	public ForkItem head() {
 		return _head;
 	}
-	
+
 	/**
 	 * 根据id获取ForkItem
 	 * @param id
@@ -79,7 +76,7 @@ public class ForkBase {
         }
     }
 	/**
-	 * 
+	 *
 	 * @param id
 	 * @return
 	 */
@@ -92,7 +89,7 @@ public class ForkBase {
         }
         return null;
 	}
-	
+
 	/**
 	 * Block添加到ForkItem
 	 * @param block
@@ -206,12 +203,14 @@ public class ForkBase {
 	 * 初始化
 	 */
 	private void init() {
-		byte[] kData = new byte[forkStore.getPrefixBytes().length];
-		System.arraycopy(forkStore.getPrefixBytes(), 0, kData,0, forkStore.getPrefixBytes().length);
-		TwoTuple<byte[], byte[]> twoTuple = db.find(forkStore.getPrefixBytes());
-		forkStore.getKeyConverter().fromBytes(twoTuple.first);
-		ForkItem forkItem = forkStore.getValConverter().fromBytes(twoTuple.second);
-		createIndex(forkItem);
+        byte[] kData = new byte[forkStore.getPrefixBytes().length];
+        System.arraycopy(forkStore.getPrefixBytes(), 0, kData, 0, forkStore.getPrefixBytes().length);
+        TwoTuple<byte[], byte[]> twoTuple = db.find(forkStore.getPrefixBytes());
+        if(twoTuple!=null) {
+            forkStore.getKeyConverter().fromBytes(kData);
+            ForkItem forkItem = forkStore.getValConverter().fromBytes(twoTuple.second);
+            createIndex(forkItem);
+        }
         if (indexByConfirmedHeight.size() == 0) {
             _head = null;
         }else {

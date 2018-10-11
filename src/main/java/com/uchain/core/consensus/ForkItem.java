@@ -107,7 +107,7 @@ public class ForkItem {
 	 * @param bytes
 	 * @return
 	 */
-	public static ForkItem fromBytes(byte[] bytes) {
+	public static ForkItem fromBytes(byte[] bytes) throws IOException{
 		val bs = new ByteArrayInputStream(bytes);
 		val is = new DataInputStream(bs);
         return deserialize(is);

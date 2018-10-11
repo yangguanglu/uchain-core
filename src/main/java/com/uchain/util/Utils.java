@@ -127,12 +127,12 @@ public class Utils {
         return bin;
     }
 
-    public static Long varint(byte[] blob)throws IOException{
+    public static Long readVarInt(byte[] blob)throws IOException{
         ByteArrayInputStream in = new ByteArrayInputStream(blob);
-        return varint(in);
+        return readVarInt(in);
     }
 
-    public static Long varint(InputStream input)throws IOException{
+    public static Long readVarInt(InputStream input)throws IOException{
         long value = input.read();
 
         if(value < 0xfd) {
@@ -189,7 +189,7 @@ public class Utils {
     }
 
     public static String varString(InputStream input)throws IOException{
-        long length = varint(input);
+        long length = readVarInt(input);
         return new String(bytes(input,length),"UTF-8");
     }
 
@@ -203,7 +203,7 @@ public class Utils {
     }
 
     public static byte[] script(InputStream input)throws IOException{
-        long length = varint(input);
+        long length = readVarInt(input);
         return bytes(input,(int)length);
     }
 

@@ -2,16 +2,17 @@ package com.uchain.common;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.uchain.crypto.BinaryData;
+import com.uchain.crypto.CryptoUtil;
 import com.uchain.crypto.Fixed8;
 import com.uchain.crypto.UInt256;
 import com.uchain.util.Utils;
 import lombok.val;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.*;
 
 public class Serializabler {
 
@@ -88,8 +89,8 @@ public class Serializabler {
 	}
 	
 	public static byte[] readByteArray(DataInputStream is) throws IOException {
-		int length = Utils.varint(is).intValue();
-		byte[] data = new byte[length];
+		int length = Utils.readVarInt(is).intValue();
+		byte[] data = new byte[(int) length];
 
 		Arrays.fill(data, (byte)0);
 		is.read(data, 0, data.length);
@@ -100,14 +101,70 @@ public class Serializabler {
 		return new String(readByteArray(is), "UTF-8");
 	}
 
-	public static<K,V> Map<K,V> readMap(DataInputStream is) throws IOException,ClassNotFoundException{
-		byte[] data = new byte[is.readInt()];
-		Arrays.fill(data, (byte)0);
-		is.read(data, 0, data.length);
-		ByteArrayInputStream byteInt=new ByteArrayInputStream(data);
-		ObjectInputStream objInt=new ObjectInputStream(byteInt);
+//	public static long readVarInt(DataInputStream inputStream) throws IOException{
+//		val value = inputStream.read();
+//		if(value < 0xfd) return value;
+//		if(value == 0xfd) return uint16(inputStream, ByteOrder.LITTLE_ENDIAN);
+//		if(value == 0xfe) return uint32(inputStream, ByteOrder.LITTLE_ENDIAN);
+//		if(value == 0xff) return uint64(inputStream, ByteOrder.LITTLE_ENDIAN);
+//		else return 0;
+//	}
+//
+//	static int uint16(DataInputStream inputStream, ByteOrder order)throws IOException{
+//
+//		byte[] bin = new byte[2];
+//		inputStream.read(bin);
+//		return uint16(CryptoUtil.array2binaryData(bin), order);
+//	}
+//
+//	static int uint16(BinaryData input, ByteOrder order)throws IOException{
+//		val buffer = ByteBuffer.wrap(CryptoUtil.binaryData2array(input)).order(order);
+//		return buffer.getShort() & 0xFFFF;
+//	}
+//
+//	static long uint32(DataInputStream inputStream, ByteOrder order)throws IOException{
+//		byte[] bin = new byte[4];
+//		inputStream.read(bin);
+//		return uint32(CryptoUtil.array2binaryData(bin), order);
+//	}
+//
+//	static long uint32(BinaryData input, ByteOrder order)throws IOException{
+//		val buffer = ByteBuffer.wrap(CryptoUtil.binaryData2array(input)).order(order);
+//		return buffer.getInt() & 0xFFFFFFFFL;
+//	}
+//
+//	static long uint64(DataInputStream inputStream, ByteOrder order)throws IOException{
+//		byte[] bin = new byte[8];
+//		inputStream.read(bin);
+//		return uint32(CryptoUtil.array2binaryData(bin), order);
+//	}
+//
+//	static long uint64(BinaryData input, ByteOrder order)throws IOException{
+//		val buffer = ByteBuffer.wrap(CryptoUtil.binaryData2array(input)).order(order);
+//		return buffer.getLong();
+//	}
 
-		return (Map<K,V>) objInt.readObject();
+//	public static<K,V> Map<K,V> readMap(DataInputStream is) throws IOException,ClassNotFoundException{
+//		byte[] data = new byte[is.readInt()];
+//		Arrays.fill(data, (byte)0);
+//		is.read(data, 0, data.length);
+//		ByteArrayInputStream byteInt=new ByteArrayInputStream(data);
+//		ObjectInputStream objInt=/*new ObjectInputStream(byteInt)*/null;
+//
+//		if(byteInt.available() != 0){
+//			objInt = new ObjectInputStream(byteInt);
+//			return (Map<K,V>) objInt.readObject();
+//		}
+//		else return new HashMap<>();
+//	}
+
+	public static Map<byte[], byte[]> readMap(DataInputStream is) throws Exception{
+		Map<byte[], byte[]> byteMap = new HashMap<>();
+		val value = Utils.readVarInt(is);
+		for(int i = 1; i<= value; i++){
+			byteMap.put(readByteArray(is), readByteArray(is));
+		}
+		return byteMap;
 	}
 
 }
