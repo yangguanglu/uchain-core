@@ -1,6 +1,9 @@
 package com.uchain.storage;
 
+import com.uchain.core.consensus.ThreeTuple;
+import com.uchain.core.consensus.TwoTuple;
 import com.uchain.core.datastore.SessionManger;
+import com.uchain.core.datastore.keyvalue.Converter;
 import lombok.val;
 import org.iq80.leveldb.*;
 import org.slf4j.Logger;
@@ -9,7 +12,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import static org.fusesource.leveldbjni.JniDBFactory.factory;
@@ -233,9 +238,36 @@ public class LevelDbStorage implements Storage<byte[], byte[]> {
 		return list;
 	}
 
-	public void foreach(){
-
+	public TwoTuple<byte[], byte[]> find(byte[] prefix){
+        DBIterator iterator = db.iterator();
+            iterator.seek(prefix);
+            ThreeTuple<Boolean, byte[], byte[]> threeTuple;
+            while (iterator.hasNext()) {
+                threeTuple = findFunc(prefix, iterator.peekNext());
+                if(threeTuple.first){
+                    iterator.next();
+                }
+                else return new TwoTuple(threeTuple.second, threeTuple.third);
+            }
+            return null;
 	}
+
+	private ThreeTuple<Boolean, byte[], byte[]> findFunc(byte[] prefix, Map.Entry<byte[], byte[]> nextEntry){
+        byte[] compareKeys = new byte[nextEntry.getKey().length];
+        System.arraycopy(nextEntry.getKey(), 0,compareKeys,0, prefix.length );
+        if(nextEntry.getKey().length < prefix.length || !Arrays.equals(prefix, compareKeys)) {
+            return new ThreeTuple(false, nextEntry.getKey(), nextEntry.getValue());
+        }
+        else {
+            return new ThreeTuple(true, nextEntry.getKey(), nextEntry.getValue());
+        }
+    }
+
+//    private boolean func(byte[] key, byte[] value,Converter keyConverter, Converter valConverter){
+//	    val kData = new byte[key.length];
+//        System.arraycopy(key, 0,kData,0, key.length);
+//        valConverter.fromBytes(value);
+//    }
 
 
 	public WriteBatch createBatchWrite(){

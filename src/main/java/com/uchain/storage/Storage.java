@@ -1,5 +1,7 @@
 package com.uchain.storage;
 
+import com.uchain.core.consensus.TwoTuple;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +26,8 @@ public interface Storage<Key, Value> {
     void rollBack();
 
 	void close();
+
+	TwoTuple<byte[], byte[]> find(byte[] prefix);
 
     Batch batchWrite();
 

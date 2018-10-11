@@ -1,18 +1,17 @@
 package com.uchain.common;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.uchain.crypto.Fixed8;
+import com.uchain.crypto.UInt256;
+import com.uchain.util.Utils;
+import lombok.val;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.uchain.crypto.Fixed8;
-import com.uchain.crypto.UInt256;
-
-import com.uchain.util.Utils;
-import lombok.val;
 
 public class Serializabler {
 
@@ -57,7 +56,7 @@ public class Serializabler {
 	}
 
 	public static void writeByteArray(DataOutputStream os, byte[] bytes) throws IOException {
-		Utils.writeVarint(bytes.length,os);
+        os.writeByte(bytes.length);
 		os.write(bytes);
 	}
 
@@ -89,7 +88,9 @@ public class Serializabler {
 	}
 	
 	public static byte[] readByteArray(DataInputStream is) throws IOException {
-		byte[] data = new byte[is.readInt()];
+		int length = Utils.varint(is).intValue();
+		byte[] data = new byte[length];
+
 		Arrays.fill(data, (byte)0);
 		is.read(data, 0, data.length);
 		return data;

@@ -95,7 +95,7 @@ public class Producer extends AbstractActor {
                 //println(s"some blocks skipped")
             }
             Witness witness = getWitness(nextProduceTime(now, next));
-            if (witness.getPrivkey()!=null) {
+            if (witness.getPrivkey()==null || "".equals(witness.getPrivkey())) {
                 return new NotMyTurn(witness.getName(), PublicKey.apply(new BinaryData(witness.getPubkey())));
             }else {
                 Collection<Transaction> txs = txPool.values();

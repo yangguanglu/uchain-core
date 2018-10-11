@@ -61,7 +61,7 @@ public class ProduceTask implements Runnable {
 		    		 Success success = (Success)produceState;
 		    		 if(success.getBlock()!=null) {
 		    			 Block blk = success.getBlock();
-		    			 log.info("block ("+blk.height()+", "+blk.timeStamp()+") produced by "+success.getProducer()+" on "+success.getTime());
+		    			 log.info("block ("+blk.height()+", "+blk.timeStamp()+") produced by "+success.getProducer()+" on "+success.getTime()+" "+blk.id());
 		    			 peerManager.tell(new BlockMessage(blk), ActorRef.noSender());
 		    		 }else {
 		    			 log.error("produce block failed");

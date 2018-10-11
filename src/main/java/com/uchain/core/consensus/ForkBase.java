@@ -19,9 +19,11 @@ import com.uchain.storage.ConnFacory;
 import com.uchain.storage.LevelDbStorage;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.val;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -181,18 +183,18 @@ public class ForkBase {
 		Batch batch = new Batch();
 		twoTuple.first.forEach(item -> {
 			ForkItem newItem = new ForkItem(item.getBlock(),item.getLastProducerHeight(),false);
-			batch.put(Serializabler.toBytes(newItem.getBlock().id()), newItem.toBytes());
             forkStore.set(newItem.getBlock().id(), newItem, batch);
 			items.add(item);
 		});
 		twoTuple.second.forEach(item -> {
             ForkItem newItem = new ForkItem(item.getBlock(),item.getLastProducerHeight(),true);
-            batch.put(Serializabler.toBytes(newItem.getBlock().id()), newItem.toBytes());
             forkStore.set(newItem.getBlock().id(), newItem, batch);
             items.add(item);
         });
+		if(db.applyBatch(batch)){
+			items.forEach(item -> updateIndex(item));
+		}
 //        db.BatchWrite(batch);
-        items.forEach(item -> updateIndex(item));
         //onSwitch(originFork, newFork);
         return twoTuple;
 	}
@@ -204,7 +206,12 @@ public class ForkBase {
 	 * 初始化
 	 */
 	private void init() {
-//        forkStore.foreach((_, item) => createIndex(item))
+		byte[] kData = new byte[forkStore.getPrefixBytes().length];
+		System.arraycopy(forkStore.getPrefixBytes(), 0, kData,0, forkStore.getPrefixBytes().length);
+		TwoTuple<byte[], byte[]> twoTuple = db.find(forkStore.getPrefixBytes());
+		forkStore.getKeyConverter().fromBytes(twoTuple.first);
+		ForkItem forkItem = forkStore.getValConverter().fromBytes(twoTuple.second);
+		createIndex(forkItem);
         if (indexByConfirmedHeight.size() == 0) {
             _head = null;
         }else {
@@ -238,7 +245,7 @@ public class ForkBase {
 				}
 				Batch batch = new Batch();
                 forkStore.delete(item.getBlock().id(), batch);
-//				db.BatchWrite(batch);
+				db.applyBatch(batch);
                 deleteIndex(item);
             }
 		}

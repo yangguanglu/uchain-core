@@ -48,7 +48,7 @@ public class BlockHeader implements Identifier<UInt160> {
 		}
 		if (obj.getClass() == getClass()) {
 			BlockHeader blk = (BlockHeader) obj;
-			return blk.id() == id();
+			return blk.id().equals(id());
 		}
 		return false;
 	}

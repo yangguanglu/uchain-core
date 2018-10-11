@@ -1,22 +1,17 @@
 package com.uchain.core;
 
+import com.google.common.collect.Maps;
+import com.uchain.common.Serializabler;
+import com.uchain.crypto.*;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.val;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Map;
-
-import com.google.common.collect.Maps;
-import com.uchain.common.Serializabler;
-import com.uchain.crypto.Crypto;
-import com.uchain.crypto.Fixed8;
-import com.uchain.crypto.UInt160;
-import com.uchain.crypto.UInt256;
-import com.uchain.crypto.UIntBase;
-
-import lombok.Getter;
-import lombok.Setter;
-import lombok.val;
 
 @Getter
 @Setter
@@ -26,24 +21,15 @@ public class Account implements Identifier<UInt160> {
 	private Map<UInt256, Fixed8> balances; //UInt256资产类型，Fixed8资产余额
 	private Long nextNonce; //  没发起一笔交易，增加1
 	private int version;   //  预留
-	private UInt160 _id = null;   //  
+	private UInt160 id;   //
 
-	public Account(boolean active, String name,Map<UInt256, Fixed8> balances, long nextNonce/*, int version*//*, UInt160 _id*/) {
-		this.name = name;
-		this.active = active;
-		this.balances = balances;
-		this.nextNonce = nextNonce;
-		this.version = 0x01;
-//		this._id = _id;
-	}
-
-	public Account(boolean active, String name,Map<UInt256, Fixed8> balances, long nextNonce, int version, UInt160 _id) {
+	public Account(boolean active, String name,Map<UInt256, Fixed8> balances, long nextNonce, int version, UInt160 id) {
 		this.name = name;
 		this.active = active;
 		this.balances = balances;
 		this.nextNonce = nextNonce;
 		this.version = version;
-		this._id = _id;
+		this.id = id;
 	}
 
 	public Fixed8 getBalance(UInt256 assetID) {
@@ -88,7 +74,8 @@ public class Account implements Identifier<UInt160> {
 			val name = Serializabler.readString(is);
 			Map<UInt256, Fixed8> balances = readMap(is);
 			val nextNonce = is.readLong();
-			return new Account(active,name,balances,nextNonce/*,version*//*,id*/);
+			val id = UInt160.deserialize(is);
+			return new Account(active,name,balances,nextNonce,version,id);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -98,7 +85,7 @@ public class Account implements Identifier<UInt160> {
 	public static Map<UInt256, Fixed8> readMap(DataInputStream is) throws IOException {
 		Map<UInt256, Fixed8> map = Maps.newLinkedHashMap();
 		int size = is.readInt();
-		for (int i = 0; i < size; i++) {
+		for (int i = 1; i <= size; i++) {
 			map.put(UInt256.deserialize(is), Fixed8.deserialize(is));
 		}
 		return map;
@@ -106,10 +93,10 @@ public class Account implements Identifier<UInt160> {
 	
 	@Override
 	public UIntBase id() {
-		if (_id == null) {
-			_id = genId();
+		if (id == null) {
+			id = genId();
 		}
-		return _id;
+		return id;
 	}
 
 }

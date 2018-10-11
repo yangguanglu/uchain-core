@@ -254,7 +254,7 @@ public class LevelDBBlockChain implements BlockChain{
     @Override
     public void startProduceBlock(PublicKey producer){
         assert(pendingTxs.isEmpty());
-        ForkItem forkHead = forkBase.head();producer.pubKeyHash();
+        ForkItem forkHead = forkBase.head();
 //        UInt160 to = UInt160.fromBytes(Crypto.hash160(CryptoUtil.listTobyte(new BinaryData("0345ffbf8dc9d8ff15785e2c228ac48d98d29b834c2e98fb8cfe6e71474d7f6322").getData())));
         Transaction minerTx = new Transaction(TransactionType.Miner, minerCoinFrom,
                 producer.pubKeyHash(), "", minerAward, UInt256.Zero(), forkHead.getBlock().height()+1L,
@@ -393,21 +393,22 @@ public class LevelDBBlockChain implements BlockChain{
 
     private Boolean applyTransaction(Transaction tx){
         Account fromAccount;
+        Map<UInt256, Fixed8> balances = Maps.newHashMap();
         if(dataBase.getAccount(tx.fromPubKeyHash())!=null){
             fromAccount = dataBase.getAccount(tx.fromPubKeyHash());
         }else {
-            fromAccount = new Account(true, "", Maps.newHashMap(), 0L);
+            fromAccount = new Account(true, "", balances, 0L,0x01,null);
         }
-        Account toAccount = null;
+        Account toAccount;
         if(dataBase.getAccount(tx.getToPubKeyHash())!=null){
             toAccount = dataBase.getAccount(tx.getToPubKeyHash());
         }else {
-            fromAccount = new Account(true, "", Maps.newHashMap(), 0L);
+            toAccount = new Account(true, "", balances, 0L,0x01,null);
         }
         Map<UInt256, Fixed8> fromBalance = updateBalancesAccount(fromAccount.getBalances(),tx,"mus");
         Map<UInt256, Fixed8> toBalance = updateBalancesAccount(toAccount.getBalances(),tx,"add");
-        dataBase.setAccount(tx.fromPubKeyHash(), new Account(true, fromAccount.getName(), fromBalance, fromAccount.getNextNonce() + 1),
-                tx.getToPubKeyHash(), new Account(true, toAccount.getName(), toBalance, toAccount.getNextNonce()));
+        dataBase.setAccount(tx.fromPubKeyHash(), new Account(true, fromAccount.getName(), fromBalance, fromAccount.getNextNonce() + 1,0x01,null),
+                tx.getToPubKeyHash(), new Account(true, toAccount.getName(), toBalance, toAccount.getNextNonce(),0x01,null));
 
         return true;
     }
