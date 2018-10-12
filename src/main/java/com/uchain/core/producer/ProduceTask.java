@@ -40,8 +40,7 @@ public class ProduceTask implements Runnable {
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
-		     
-		     while (!cancelled) {
+		     if (!cancelled) {
 		    	 ProduceState produceState = producer.produce();
 		    	 if(produceState instanceof NotSynced) {
 		    		 log.debug("not synced");

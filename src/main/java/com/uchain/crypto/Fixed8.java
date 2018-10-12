@@ -51,7 +51,7 @@ public class Fixed8 implements Serializable {
     }
 
     public boolean equals(Fixed8 that) {
-        return this == that;
+        return this.value == that.getValue();
     }
 
     @Override

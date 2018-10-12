@@ -322,6 +322,7 @@ public class LevelDBBlockChain implements BlockChain{
         if (forkBase.head().getBlock().id().equals(block.prev())) {
             if (doApply == false) {
                 ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple = forkBase.add(block);
+                log.info("threeTuplethreeTuplethreeTuplethreeTuple="+threeTuple);
                 confirmedOrSwitch(threeTuple);
                 inserted = true;
                 latestHeader = block.getHeader();

@@ -9,6 +9,7 @@ package com.uchain.core.datastore;
  * @Version: 1.0
  * *************************************************************/
 
+import com.google.common.collect.Lists;
 import com.uchain.core.datastore.keyvalue.IntKey;
 import com.uchain.storage.Batch;
 import lombok.val;
@@ -133,13 +134,14 @@ public class SessionManger {
     }
 
     public void commit(int revision){
+        List<RollSession> sessionsTemp = Lists.newArrayList();
         sessions.forEach(session1 -> {
             if(session1.get_revision()  <= revision){
-                sessions.remove(session1);
+                sessionsTemp.add(session1);
                 session1.close();
             }
         });
-
+        sessions.removeAll(sessionsTemp);
     }
 
     public void rollBack() throws IOException{

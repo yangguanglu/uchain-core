@@ -35,8 +35,8 @@ public class ForkBase {
 	private Settings settings;
 	private ForkItem _head;
 	private LevelDbStorage db;
-	private Map<UInt256, ForkItem> indexById = new HashMap<>();
-	private MultiMap<UInt256, UInt256> indexByPrev = new MultiMap<UInt256, UInt256>();
+	private Map<UInt256, ForkItem> indexById = new HashMap();
+	private MultiMap<UInt256, UInt256> indexByPrev = new MultiMap();
 	private SortedMultiMap2<Integer,Boolean,UInt256> indexByHeight = new SortedMultiMap2<>("asc","reverse");
 	private SortedMultiMap2<Integer,Integer,UInt256> indexByConfirmedHeight = new SortedMultiMap2<>("reverse","reverse");
 
@@ -70,7 +70,7 @@ public class ForkBase {
         List<UInt256> list = indexByHeight.get(height,true);
         if(list != null && list.size()>0) {
             UInt256 uInt256 = list.get(0);
-            return indexById.get(uInt256);
+            return get(uInt256);
         }else{
             return null;
         }
@@ -190,10 +190,9 @@ public class ForkBase {
         });
 		if(db.applyBatch(batch)){
 			items.forEach(item -> updateIndex(item));
-		}
-//        db.BatchWrite(batch);
-        //onSwitch(originFork, newFork);
-        return twoTuple;
+            return twoTuple;
+        }
+        return null;
 	}
 
 	public void close() {
@@ -217,11 +216,11 @@ public class ForkBase {
             _head = indexById.get(indexByConfirmedHeight.head().third);
         }
 	}
-	
+
 	/**
 	 * 从ForkBase删除已经已经确认的块
 	 * @param height
-	 * @return 
+	 * @return
 	 */
 	private Block removeConfirmed(int height) {
         Block block = null;
@@ -235,17 +234,17 @@ public class ForkBase {
 			}else if(firstObject instanceof Integer){
 				first = (Integer)firstObject;
 			}
+			log.info("aaaaaaaaaa="+first+"   "+height);
 			if(first < height){
 				ForkItem item = indexById.get(threeTuple.third);
 				if(item.isMaster()) {
-//					items.add(item);
-//					saveBlocks.add(item);
                     block = item.getBlock();
 				}
 				Batch batch = new Batch();
                 forkStore.delete(item.getBlock().id(), batch);
-				db.applyBatch(batch);
-                deleteIndex(item);
+				if(db.applyBatch(batch)) {
+                    deleteIndex(item);
+                }
             }
 		}
 		return block;
@@ -264,7 +263,7 @@ public class ForkBase {
 			return false;
 		}
 	}
-	
+
 	/**
 	 * x和y两个分叉回溯到分叉点
 	 * @param x
@@ -300,7 +299,7 @@ public class ForkBase {
 		}
 		return twoTuple;
 	}
-	
+
 	/**
 	 * 获取上一个ForkItem
 	 * @param item
@@ -313,7 +312,7 @@ public class ForkBase {
 		}
 		return prev;
 	}
-	
+
 	private void createIndex(ForkItem item) {
 		Block blk = item.getBlock();
 		indexById.put(blk.id(), item);
@@ -321,7 +320,7 @@ public class ForkBase {
 		indexByHeight.put(blk.height(), item.isMaster(), blk.id());
 		indexByConfirmedHeight.put(item.confirmedHeight(), blk.height(), blk.id());
 	}
-	
+
 	private void deleteIndex(ForkItem item) {
 		Block blk = item.getBlock();
 		indexById.remove(blk.id());

@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -98,7 +97,6 @@ public class Producer extends AbstractActor {
             if (witness.getPrivkey()==null || "".equals(witness.getPrivkey())) {
                 return new NotMyTurn(witness.getName(), PublicKey.apply(new BinaryData(witness.getPubkey())));
             }else {
-                Collection<Transaction> txs = txPool.values();
                 Block block = chain.produceBlockFinalize(PublicKey.apply(new BinaryData(witness.getPubkey())), PrivateKey.apply(new BinaryData(witness.getPrivkey())), nextProduceTime(now, next));
                 if (block!=null) {
                     getSelf().tell(new BlockAcceptedMessage(block),ActorRef.noSender());
@@ -129,7 +127,7 @@ public class Producer extends AbstractActor {
 		slot += nextN;
 		return slot * settings.getProduceInterval();
 	}
-	
+
 	/**
 	 * 下一个区块生产时间
 	 * @param now
@@ -156,7 +154,7 @@ public class Producer extends AbstractActor {
 		index /= settings.getProducerRepetitions();
 		return settings.getWitnessList().get((int)index); //获取
 	}
-	
+
 	/**
 	 * 洗牌
 	 * @param nowSec
