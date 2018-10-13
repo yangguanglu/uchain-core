@@ -3,6 +3,7 @@ package com.uchain.core;
 import com.google.common.collect.Maps;
 import com.uchain.common.Serializabler;
 import com.uchain.crypto.*;
+import com.uchain.util.Utils;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.val;
@@ -84,7 +85,7 @@ public class Account implements Identifier<UInt160> {
 
 	public static Map<UInt256, Fixed8> readMap(DataInputStream is) throws IOException {
 		Map<UInt256, Fixed8> map = Maps.newLinkedHashMap();
-		int size = is.readInt();
+		val size = Utils.readVarInt(is);
 		for (int i = 1; i <= size; i++) {
 			map.put(UInt256.deserialize(is), Fixed8.deserialize(is));
 		}

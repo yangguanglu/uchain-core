@@ -14,9 +14,13 @@ class MapKeyComparator<K> implements Comparator<K>{
 				return -1;
 			}
 		}else if (k1 instanceof String) {
-		    String s1 = (String) k1;
-		    String s2 = (String) k2;
-		    return s1.compareTo(s2);
+            int value1 = Integer.parseInt((String) k1);
+            int value2 = Integer.parseInt((String) k2);
+            if(value1>=value2) {
+                return 1;
+            }else {
+                return -1;
+            }
 		}else if (k1 instanceof Boolean) {
 		    Boolean b1 = ((Boolean) k1).booleanValue();
 		    Boolean b2 = ((Boolean) k2).booleanValue();

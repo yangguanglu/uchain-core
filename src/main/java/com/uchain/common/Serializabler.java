@@ -87,6 +87,14 @@ public class Serializabler {
 			value.serialize(os);
 		});
 	}
+
+	public static <K extends Serializable,V extends Serializable> void writeMap(DataOutputStream os, Map<K,V> map,Boolean flag) throws IOException {
+		Utils.writeVarint(map.size(),os);
+		map.forEach((key, value) -> {
+			key.serialize(os);
+			value.serialize(os);
+		});
+	}
 	
 	public static byte[] readByteArray(DataInputStream is) throws IOException {
 		int length = Utils.readVarInt(is).intValue();

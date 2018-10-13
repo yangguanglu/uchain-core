@@ -237,13 +237,15 @@ public class ForkBase {
 			log.info("aaaaaaaaaa="+first+"   "+height);
 			if(first < height){
 				ForkItem item = indexById.get(threeTuple.third);
-				if(item.isMaster()) {
+				if(item !=null && item.isMaster()) {
                     block = item.getBlock();
 				}
-				Batch batch = new Batch();
-                forkStore.delete(item.getBlock().id(), batch);
-				if(db.applyBatch(batch)) {
-                    deleteIndex(item);
+				if(item!=null) {
+                    Batch batch = new Batch();
+                    forkStore.delete(item.getBlock().id(), batch);
+                    if (db.applyBatch(batch)) {
+                        deleteIndex(item);
+                    }
                 }
             }
 		}

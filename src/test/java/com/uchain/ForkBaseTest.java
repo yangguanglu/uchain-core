@@ -17,7 +17,6 @@ import com.uchain.crypto.BinaryData;
 import com.uchain.crypto.PrivateKey;
 import com.uchain.crypto.PublicKey;
 import com.uchain.crypto.UInt256;
-import com.uchain.main.ForkBaseSettings;
 import com.uchain.main.Settings;
 import com.uchain.main.Witness;
 import org.junit.AfterClass;
@@ -90,21 +89,206 @@ public class ForkBaseTest {
         return Block.build(header, queue);
     }
 
-    public ForkBase open(String dir, List<Witness> witnesses){
-        /*def forkStr(title: String, fork: Seq[ForkItem]): String = {
-                s"  $title: ${fork.map(blk => s"${blk.block.height}(${blk.block.id.toString.substring(0, 6)})").mkString(" <- ")}"
-    }*/
+    public static ForkBase open(String dir, List<Witness> witnesses){
+        Settings settings = new Settings("config");
 
-        ForkBaseSettings settings = new ForkBaseSettings(dir, false, 0);
+        ForkBase forkBase = new ForkBase(settings);
 
-        ForkBase forkBase = new ForkBase(null);
         dbs.add(forkBase);
         dirs.add(dir);
         return forkBase;
     }
 
     @Test
-    public void testHead(){
-
+    public void testHead() throws IOException{
+        Block blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
+        Block blk2a = ForkBaseTest.newBlock(PubA, PriA, blk1a);
+        Block blk3a = ForkBaseTest.newBlock(PubA, PriA, blk2a);
+        Block blk4a = ForkBaseTest.newBlock(PubA, PriA, blk3a);
+        Block blk3b = ForkBaseTest.newBlock(PubB, PriB, blk2a);
+        Block blk4b = ForkBaseTest.newBlock(PubB, PriB, blk3b);
+        ForkBase forkBase = ForkBaseTest.open("forkBase_head", witnesses);
+        System.out.println(forkBase.head());
+        //由于forkBase是从config中读取，因此初始不是null
+        //assert(forkBase.head()==null);
+        forkBase.add(genesis);
+        assert(forkBase.head().getBlock().equals(genesis));
+        forkBase.add(blk1a);
+        assert(forkBase.head().getBlock().equals(blk1a));
+        forkBase.add(blk2a);
+        assert(forkBase.head().getBlock().equals(blk2a));
+        forkBase.add(blk3b);
+        assert(forkBase.head().getBlock().equals(blk3b));
+        forkBase.add(blk4b);
+        assert(forkBase.head().getBlock().equals(blk4b));
+//        assert(forkBase.get(blk1a.id()).isMaster());
     }
+
+    @Test
+    public void testGet()throws IOException{
+        ForkBase forkBase = ForkBaseTest.open("forkBase_get", witnesses);
+        assertBlock(forkBase,genesis);
+        Block blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
+        assertBlock(forkBase,blk1a);
+        Block blk2a = ForkBaseTest.newBlock(PubA, PriA, blk1a);
+        assertBlock(forkBase,blk2a);
+        Block blk3a = ForkBaseTest.newBlock(PubA, PriA, blk2a);
+        assertBlock(forkBase,blk3a,false, true, true, true);
+    }
+
+    public void assertBlock(ForkBase forkBase,Block block){
+        assertBlock(forkBase,block,false,false,true,true);
+    }
+
+    public void assertBlock(ForkBase forkBase,Block block,Boolean beforeId,Boolean beforeHeight, Boolean afterId, Boolean afterHeight){
+        assert((forkBase.get(block.id())==null) == beforeId);
+        assert((forkBase.get(block.height())==null) == beforeHeight);
+        forkBase.add(block);
+        assert((forkBase.get(block.id())==null) == afterId);
+        assert((forkBase.get(block.height())==null) == afterHeight);
+    }
+
+    @Test
+    public void testGetNext() throws IOException{
+        ForkBase forkBase = ForkBaseTest.open("forkBase_next", witnesses);
+        assert(forkBase.getNext(genesis.id())==null);
+        forkBase.add(genesis);
+        assert(forkBase.getNext(genesis.id())==null);
+        Block blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
+        Block blk1b = ForkBaseTest.newBlock(PubA, PriA, genesis);
+        Block blk2b = ForkBaseTest.newBlock(PubB, PriB, blk1b);
+        forkBase.add(blk1a);
+        assert(forkBase.getNext(genesis.id()).equals(blk1a.id()));
+        forkBase.add(blk1b);
+        assert(forkBase.getNext(genesis.id()).equals(blk1a.id()));
+        forkBase.add(blk2b);
+        assert(forkBase.getNext(genesis.id()).equals(blk1b.id()));
+    }
+
+    @Test
+    public void testAdd()throws IOException{
+        ForkBase forkBase = ForkBaseTest.open("forkBase_add", witnesses);
+//        assert(forkBase.add(genesis));
+//        assert(!forkBase.add(genesis));
+        Block blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
+//        assert(forkBase.add(blk1a))
+        Block blk2a = ForkBaseTest.newBlock(PubA, PriA, blk1a);
+        Block blk3a = ForkBaseTest.newBlock(PubA, PriA, blk2a);
+//        assert(!forkBase.add(blk3a))
+    }
+
+    @Test
+    public void testSwitch() throws IOException{
+        Witness C = new Witness();
+        C.setName("C");
+        C.setPubkey(PubC.hash160().toString());
+        C.setPrivkey(PriC.toString());
+        this.witnesses.add(C);
+        ForkBase forkBase = ForkBaseTest.open("forkBase_switch", witnesses);
+        Block blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
+        Block blk2a = ForkBaseTest.newBlock(PubA, PriA, blk1a);
+        Block blk3a = ForkBaseTest.newBlock(PubA, PriA, blk2a);
+        Block blk4a = ForkBaseTest.newBlock(PubA, PriA, blk3a);
+        Block blk5a = ForkBaseTest.newBlock(PubA, PriA, blk4a);
+        Block blk3b = ForkBaseTest.newBlock(PubB, PriB, blk2a);
+        Block blk4b = ForkBaseTest.newBlock(PubB, PriB, blk3b);
+        Block blk4c = ForkBaseTest.newBlock(PubC, PriC, blk3b);
+        forkBase.add(genesis);
+        forkBase.add(blk1a);
+        forkBase.add(blk2a);
+        forkBase.add(blk3b);
+        forkBase.add(blk4b);
+        assert(forkBase.get(blk1a.id()).isMaster());
+        assert(forkBase.get(blk2a.id()).isMaster());
+        assert(forkBase.get(blk3b.id()).isMaster());
+        assert(forkBase.get(blk4b.id()).isMaster());
+        forkBase.add(blk3a);
+        forkBase.add(blk4a);
+        assert(forkBase.get(blk1a.id()).isMaster());
+        assert(forkBase.get(blk2a.id()).isMaster());
+        assert(forkBase.get(blk3a.id()).isMaster());
+        assert(forkBase.get(blk4a.id()).isMaster());
+        forkBase.add(blk5a);
+        assert(forkBase.get(blk3b.id()).isMaster());
+        assert(forkBase.get(blk4b.id()).isMaster());
+        assert(forkBase.get(blk3a.id()).isMaster());
+        assert(forkBase.get(blk4a.id()).isMaster());
+        assert(forkBase.get(blk5a.id()).isMaster());
+        forkBase.add(blk4c);
+        assert(forkBase.get(blk4b.id()).isMaster());
+        assert(forkBase.get(blk3a.id()).isMaster());
+        assert(forkBase.get(blk4a.id()).isMaster());
+        assert(forkBase.get(blk5a.id()).isMaster());
+        assert(forkBase.get(blk3b.id()).isMaster());
+        assert(forkBase.get(blk4c.id()).isMaster());
+    }
+
+    @Test
+    public void testRemoveFork()throws IOException{
+        Witness C = new Witness();
+        C.setName("C");
+        C.setPubkey(PubC.hash160().toString());
+        C.setPrivkey(PriC.toString());
+        this.witnesses.add(C);
+        ForkBase forkBase = ForkBaseTest.open("forkBase_removeFork", witnesses);
+        Block blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
+        Block blk2a = ForkBaseTest.newBlock(PubA, PriA, blk1a);
+        Block blk3a = ForkBaseTest.newBlock(PubA, PriA, blk2a);
+        Block blk4a = ForkBaseTest.newBlock(PubA, PriA, blk3a);
+        Block blk5a = ForkBaseTest.newBlock(PubA, PriA, blk4a);
+        Block blk3b = ForkBaseTest.newBlock(PubB, PriB, blk2a);
+        Block blk4b = ForkBaseTest.newBlock(PubB, PriB, blk3b);
+        Block blk3c = ForkBaseTest.newBlock(PubC, PriC, blk2a);
+        forkBase.add(genesis);
+        forkBase.add(blk1a);
+        forkBase.add(blk2a);
+        forkBase.add(blk3b);
+        forkBase.add(blk4b);
+        forkBase.add(blk3a);
+        forkBase.add(blk4a);
+        forkBase.add(blk5a);
+//        assert(forkBase.removeFork(blk4a.id()));
+        assert(forkBase.get(blk1a.id())!=null);
+        assert(forkBase.get(blk2a.id())!=null);
+        assert(forkBase.get(blk3a.id())!=null);
+        assert(forkBase.get(blk3b.id())!=null);
+        assert(forkBase.get(blk4b.id())!=null);
+        assert(forkBase.get(blk4a.id())==null);
+        assert(forkBase.get(blk5a.id())==null);
+//        assert(forkBase.removeFork(blk2a.id));
+        assert(forkBase.get(blk1a.id())!=null);
+        assert(forkBase.get(blk2a.id())==null);
+        assert(forkBase.get(blk3a.id())==null);
+        assert(forkBase.get(blk3b.id())==null);
+        assert(forkBase.get(blk4b.id())==null);
+//        assert(!forkBase.removeFork(blk3c.id));
+    }
+    @Test
+    public void testFork()throws IOException{
+        ForkBase forkBase = ForkBaseTest.open("forkBase_fork", witnesses);
+        Block blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
+        Block blk2a = ForkBaseTest.newBlock(PubA, PriA, blk1a);
+        Block blk3a = ForkBaseTest.newBlock(PubA, PriA, blk2a);
+        Block blk4a = ForkBaseTest.newBlock(PubA, PriA, blk3a);
+        forkBase.add(genesis);
+        forkBase.add(blk1a);
+        assert(forkBase.head().getBlock().id().equals(blk1a.id()));
+        forkBase.add(blk2a);
+        assert(forkBase.head().getBlock().id().equals(blk2a.id()));
+        forkBase.add(blk3a);
+        assert(forkBase.head().getBlock().id().equals(blk3a.id()));
+        Block blk3b = ForkBaseTest.newBlock(PubB, PriB, blk2a);
+        Block blk4b = ForkBaseTest.newBlock(PubB, PriB, blk3b);
+        forkBase.add(blk3b);
+        assert(forkBase.head().getBlock().id().equals(blk3b.id()));
+        assert(forkBase.get(blk3a.id()).isMaster() == false);
+        assert(forkBase.get(blk3b.id()).isMaster() == true);
+        forkBase.add(blk4a);
+        assert(forkBase.head().getBlock().id().equals(blk3b.id()));
+        forkBase.add(blk4b);
+        assert(forkBase.head().getBlock().id().equals(blk4b.id()));
+    }
+
 }
+
+

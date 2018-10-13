@@ -82,42 +82,6 @@ public class LevelDBBlockChain implements BlockChain{
 
         populate();
 
-//        headerStore = new HeaderStore(db, 10, DataStoreConstant.HeaderPrefix,
-//                new UInt256Key(), new BlockHeaderValue());
-//        heightStore = new HeightStore(db, 10, DataStoreConstant.HeightToIdIndexPrefix,
-//                new IntKey(), new UInt256Value());
-//        txStore = new TransactionStore(db, 10, DataStoreConstant.TxPrefix,
-//                new UInt256Key(), new TransactionValue());
-//        accountStore = new AccountStore(db, 10, DataStoreConstant.AccountPrefix,
-//                new UInt160Key(), new AccountValue());
-//        blkTxMappingStore = new BlkTxMappingStore(db, 10,
-//                DataStoreConstant.BlockIdToTxIdIndexPrefix, new UInt256Key(), new BlkTxMappingValue());
-//        headBlkStore = new HeadBlockDataStore(db, DataStoreConstant.HeadBlockStatePrefix,
-//                new HeadBlockValue());
-//        nameToAccountStore = new NameToAccountStore(db, 10,
-//                DataStoreConstant.NameToAccountIndexPrefix,new StringKey(),new UInt160Key());
-//        prodStateStore = new ProducerStateStore(db,  DataStoreConstant.ProducerStatePrefix,
-//                new ProducerStatusValue());
-
-
-//        HeadBlock headBlockStore = headBlkStore.get();
-//        if(headBlockStore == null)
-//            latestHeader = reInit();
-//        else
-//            latestHeader = init(headBlockStore);
-//
-//        if (forkBase.head() == null) {
-//            TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(genesisBlock);
-//            if(twoTuple != null) {
-//                List<ForkItem> saveBlocks = twoTuple.first;
-//                WriteBatch batch = db.getBatchWrite();
-//                saveBlocks.forEach(item -> {
-//                    onConfirmed(item.getBlock());
-//                    batch.delete(Serializabler.toBytes(item.getBlock().id()));
-//                });
-//                db.BatchWrite(batch);
-//            }
-//        }
     }
 
     private void populate(){
@@ -363,34 +327,6 @@ public class LevelDBBlockChain implements BlockChain{
         return applied;
     }
 
-//    @Override
-//    public boolean containsBlock(UInt256 id){
-//        return headerStore.contains(id);
-//    }
-//
-//    /**
-//     * 产生区块
-//     */
-//    @Override
-//    public Block produceBlock(PublicKey producer, PrivateKey privateKey, long timeStamp,
-//                              List<Transaction> transactions){
-//        UInt160 to = UInt160.fromBytes(Crypto.hash160(CryptoUtil.listTobyte(new BinaryData("0345ffbf8dc9d8ff15785e2c228ac48d98d29b834c2e98fb8cfe6e71474d7f6322").getData())));
-//        val minerTx = new Transaction(TransactionType.Miner, minerCoinFrom,
-//                to, "", minerAward, UInt256.Zero(), new Long((latestHeader.getIndex() + 1)),
-//                new BinaryData(new ArrayList<>()), new BinaryData(new ArrayList<>()),0x01,null);
-//        val txs = getUpdateTransaction(minerTx, transactions);
-//        val merkleRoot = MerkleTree.root(txs.stream().map(v -> v.id()).collect(Collectors.toList()));
-//        ForkItem forkHead = forkBase.head();
-//        val header = BlockHeader.build(forkHead.getBlock().height() + 1, timeStamp, merkleRoot,
-//                forkHead.getBlock().id(), producer, privateKey);
-//        val block = new Block(header, txs);
-//        TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(block);
-//		if (twoTuple!= null && twoTuple.second) {
-//			return block;
-//		} else {
-//			return null;
-//		}
-//    }
 
     private Boolean applyTransaction(Transaction tx){
         Account fromAccount;
@@ -476,86 +412,10 @@ public class LevelDBBlockChain implements BlockChain{
     private Boolean verifyHeader(BlockHeader header) {
         return header.verifySig();
     }
-    /**
-     * 校验交易，并把矿工交易置为第一条记录
-     * @param minerTx
-     * @param transactions
-     * @return
-     */
-    private List<Transaction> getUpdateTransaction(Transaction minerTx, List<Transaction> transactions){
-        List<Transaction> txs = new ArrayList<Transaction>(transactions.size() + 1);
-        transactions.forEach(transaction -> {
-            if(verifyTransaction(transaction)) txs.add(transaction);
-        });
-        txs.add(0,minerTx);
-        return txs;
-    }
-    
-//    @Override
-//    public boolean tryInsertBlock(Block block) {
-//        TwoTuple<List<ForkItem>,Boolean> twoTuple = forkBase.add(block);
-//        if(twoTuple != null) {
-//            List<ForkItem> forkItem = twoTuple.first;
-//            for (int i = 0; i < forkItem.size(); i++) {
-//                onConfirmed(forkItem.get(i).getBlock());
-//            }
-//            return true;
-//        }else
-//            return false;
-//    }
 
 
-//    /**
-//	 * 已确认的Block存入数据库
-//	 * @param block
-//	 */
-//	private void onConfirmed(Block block) {
-//		log.info("confirm block height:"+ block.height()+" block id:"+block.id());
-//		if(block.height() != 0) {
-//			saveBlockToStores(block);
-//		}
-//	}
-	
-//    private boolean saveBlockToStores(Block block){
-//        try {
-//        	WriteBatch batch = db.getBatchWrite();
-//            headerStore.set(block.getHeader().id(), block.getHeader(), batch);
-//            heightStore.set(block.getHeader().getIndex(), block.getHeader().id(), batch);
-//            headBlkStore.set(new HeadBlock(block.getHeader().getIndex(), block.getHeader().id()), batch);
-//            val transations = new ArrayList<UInt256>(block.getTransactions().size());
-//            block.getTransactions().forEach(transaction -> {transations.add(transaction.id());});
-//            val blkTxMapping = new BlkTxMapping(block.id(), transations);
-//            blkTxMappingStore.set(block.id(), blkTxMapping, batch);
-//            Map<UInt160, Account> accounts = new HashMap<UInt160, Account>();
-//            Map<UInt160, Map<UInt256, Fixed8>> balances = new HashMap<>();
-//            block.getTransactions().forEach(tx -> {
-//                txStore.set(tx.id(), tx, batch);
-//                calcBalancesInBlock(balances, true, tx.fromPubKeyHash(), tx.getAmount(), tx.getAssetId());
-//                calcBalancesInBlock(balances, false, tx.getToPubKeyHash(), tx.getAmount(), tx.getAssetId());
-//                updateAccout(accounts, tx);
-//            });
-//            balances.forEach((accountAddress, balancesInLocalBlk) -> {
-//                if(accountStore.contains(accountAddress)){
-//                    val account = accountStore.get(accountAddress);
-//                    val updateBalances = updateBalancesInAccount(account.getBalances(), balancesInLocalBlk);
-//                    val updateAccount = new Account(account.isActive(), account.getName(),updateBalances,
-//                            account.getNextNonce(), account.getVersion(), account.get_id());
-//                    accountStore.set(accountAddress, updateAccount, batch);
-//                }
-//                else{
-//                    val newAccount = new Account(true, "", getBalancesWithOutAccount(balancesInLocalBlk), 0L);
-//                    accountStore.set(accountAddress, newAccount, batch);
-//                }
-//            });
-//            latestHeader = block.getHeader();
-//            db.BatchWrite(batch);
-//            return true;
-//        } catch (Throwable throwable) {
-//            throwable.printStackTrace();
-//            return false;
-//        }
-//    }
-    
+
+
 
     private boolean verifyRegisterNames(List<Transaction> transactions){
         boolean isValid = true;

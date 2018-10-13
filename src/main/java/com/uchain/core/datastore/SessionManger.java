@@ -12,15 +12,13 @@ package com.uchain.core.datastore;
 import com.google.common.collect.Lists;
 import com.uchain.core.datastore.keyvalue.IntKey;
 import com.uchain.storage.Batch;
-import lombok.val;
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.WriteBatch;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class SessionManger {
 
@@ -63,9 +61,10 @@ public class SessionManger {
         try {
             iterator.seek(prefix);
 
-            boolean eof = false;
-            while (!eof && iterator.hasNext()) {
-                eof = reloadSessions(iterator);
+            if (reloadRevision(iterator)) {
+                List<RollSession> temp = reloadSessions(iterator);
+                temp.sort(Comparator.comparingInt(RollSession::get_revision)); //升序
+                sessions.addAll(temp);
             }
         } finally {
             try {
@@ -80,28 +79,50 @@ public class SessionManger {
         }
     }
 
-    private Boolean reloadSessions(DBIterator iterator){
-        val kv = iterator.peekNext();
-        byte[] key = kv.getKey();
-        if(key[0]==prefix[0]){
-            byte[] value = kv.getValue();
-            if(key.length > prefix.length){
+    private boolean reloadRevision(DBIterator iterator){
+        if (iterator.hasNext()) {
+            Map.Entry<byte[], byte[]> kv = iterator.peekNext();
+            byte[] key = kv.getKey();
+            if(key[0]==prefix[0]){
+//                assert(Arrays.equals(key,prefix));
+                for(int i=0;i<prefix.length;i++){
+                    assert (key[i] == prefix[i]);
+                }
+                _revision = new BigInteger(kv.getValue()).intValue();
+                iterator.next();
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+
+    private List<RollSession> reloadSessions(DBIterator iterator){
+        boolean eof = false;
+        List<RollSession> temp = Lists.newArrayList();
+        while(!eof && iterator.hasNext()){
+            Map.Entry<byte[], byte[]> kv = iterator.peekNext();
+            byte[] key = kv.getKey();
+            if(key[0]==prefix[0]){
+                byte[] value = kv.getValue();
                 int count = key.length-prefix.length;
                 byte[] bs = new byte[count];
                 System.arraycopy(key, prefix.length, bs, 0, count);
                 BigInteger version = new BigInteger(bs);
-                RollSession rsession = new RollSession(db,prefix,version.intValue());
-                sessions.add(rsession);
-                rsession.init(value);
+                RollSession session = new RollSession(db,prefix,version.intValue());
+                session.init(value);
+                temp.add(session);
+                iterator.next();
             }else {
-                _revision = Integer.valueOf(new BigInteger(value).toString());
+                eof = true;
             }
-            iterator.next();
-            return false;
-        }else{
-            return true;
         }
+        return temp;
     }
+
     public Batch beginSet(byte[] k, byte[] v, Batch batch) throws Exception{
         Session session;
         if(sessions.size()==0){

@@ -39,26 +39,26 @@ public class SortedMultiMap2Test {
 //		}
 //		sortedMultiMap2.remove("2","2");
 
-		SortedMultiMap2<Integer, Integer, UInt256> sortedMultiMap2 = new SortedMultiMap2<>(
-				"reverse", "reverse");
+		SortedMultiMap2<Integer, Boolean, UInt256> sortedMultiMap2 = new SortedMultiMap2<>(
+				"asc", "reverse");
 		UInt256 ss0 = UInt256.fromBytes(Crypto.hash256(("test"+0).getBytes("UTF-8")));
 		UInt256 ss1 = UInt256.fromBytes(Crypto.hash256(("test"+1).getBytes("UTF-8")));
         UInt256 ss2 = UInt256.fromBytes(Crypto.hash256(("test"+2).getBytes("UTF-8")));
         UInt256 ss3 = UInt256.fromBytes(Crypto.hash256(("test"+3).getBytes("UTF-8")));
 
-		sortedMultiMap2.put(1, 1, ss0);
-		sortedMultiMap2.put(2, 1, ss1);
-        sortedMultiMap2.put(3, 1, ss1);
-        sortedMultiMap2.put(4, 1, ss1);
-        sortedMultiMap2.put(5, 1, ss1);
-        sortedMultiMap2.put(6, 1, ss1);
-        sortedMultiMap2.put(7, 1, ss1);
-        sortedMultiMap2.put(8, 1, ss1);
-       sortedMultiMap2.put(9, 1, ss2);
-        sortedMultiMap2.put(10, 1, ss0);
-        sortedMultiMap2.put(11, 1, ss3);
+		sortedMultiMap2.put(1, true, ss0);
+		sortedMultiMap2.put(1, false, ss1);
+        sortedMultiMap2.put(3, true, ss1);
+        sortedMultiMap2.put(4, true, ss1);
+        sortedMultiMap2.put(5, true, ss1);
+        sortedMultiMap2.put(6, true, ss1);
+        sortedMultiMap2.put(7, true, ss1);
+        sortedMultiMap2.put(8, true, ss1);
+        sortedMultiMap2.put(9, true, ss2);
+        sortedMultiMap2.put(10, true, ss0);
+        sortedMultiMap2.put(11, true, ss3);
 //        sortedMultiMap2.put(12, 1, ss0);
 
-        System.out.println(sortedMultiMap2.head().first);
+        System.out.println(sortedMultiMap2.head().first+"" +sortedMultiMap2.head().second);
 	}
 }
