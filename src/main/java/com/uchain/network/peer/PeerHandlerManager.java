@@ -4,19 +4,19 @@ import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.io.Tcp;
+import com.uchain.crypto.UInt256;
 import com.uchain.main.Settings;
 import com.uchain.network.NetworkUtil.*;
 import com.uchain.network.message.BlockMessageImpl.BlockMessage;
+import com.uchain.network.message.BlockMessageImpl.GetBlocksMessage;
 import com.uchain.network.message.BlockMessageImpl.InventoryMessage;
+import com.uchain.network.message.GetBlocksPayload;
 import com.uchain.network.message.MessagePack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class PeerHandlerManager extends AbstractActor{
 	private static Logger log = LoggerFactory.getLogger(PeerHandlerManager.class);
@@ -75,6 +75,8 @@ public class PeerHandlerManager extends AbstractActor{
 		    	  }
 		    	  connectedPeers.put(peer.getSocketAddress(), peer);
 //		          log.info("更新本节点连接的节点="+connectedPeers);
+                  Thread.sleep(100);
+                  peer.getHandlerRef().tell(new GetBlocksMessage(new GetBlocksPayload(Arrays.asList( UInt256.Zero()), UInt256.Zero())).pack(), getSelf());
 	          })
 		      .match(PeerHandler.class, msg -> {
 		    	  ActorRef handler = msg.getHandlerRef();
@@ -90,7 +92,7 @@ public class PeerHandlerManager extends AbstractActor{
 		    	  log.info("broadcasting BlockMessage:");
 		    	  connectedPeers.forEach((socketAddress, connectedPeer) -> {
 		    		  connectedPeer.getHandlerRef().tell(msg.pack(), getSelf());
-		    		  log.info("send block "+msg.getBlock().height()+"("+msg.getBlock().id()+") to "+connectedPeer.toString());
+		    		  log.info("send block "+msg.getBlock().height()+"("+msg.getBlock().id()+")" /*to "+connectedPeer.toString()*/);
 		    	  });
 	          })
 		      .match(InventoryMessage.class, msg -> {

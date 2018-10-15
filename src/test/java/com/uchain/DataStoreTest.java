@@ -24,6 +24,7 @@ import lombok.val;
 import org.junit.AfterClass;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -48,7 +49,7 @@ public class DataStoreTest {
         dbs.remove(db);
     }
 
-    //@AfterClass
+    @AfterClass
     public static void cleanUp(){
         dbs.forEach(dbtmp->{dbtmp.close();});
         dirs.forEach(dirtmp->deleteDir(dirtmp));
@@ -57,7 +58,13 @@ public class DataStoreTest {
     private static void deleteDir(String dir){
         try {
             //递归删除
-            //Directory(dir).deleteRecursively();
+            File scFileDir = new File(dir);
+            File TrxFiles[] = scFileDir.listFiles();
+            for(File curFile:TrxFiles ){
+                curFile.delete();
+            }
+            //删除空目录
+            scFileDir.delete();
         } catch (Exception e){
             e.printStackTrace();
         }

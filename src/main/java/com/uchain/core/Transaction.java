@@ -6,6 +6,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uchain.common.Serializabler;
@@ -28,6 +30,8 @@ import lombok.val;
 public class Transaction implements Identifier<UInt256> {
 
 	private TransactionType txType; //交易类型
+
+	@JsonIgnore
 	private PublicKey from; // from
 	private UInt160 toPubKeyHash; // to
 	private String toName; //  发送交易者的账户

@@ -3,19 +3,21 @@ package com.uchain.core.producer;
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
+import com.uchain.common.Serializabler;
 import com.uchain.core.Block;
 import com.uchain.core.BlockChain;
+import com.uchain.core.LevelDBBlockChain;
 import com.uchain.core.Transaction;
 import com.uchain.core.producer.ProduceStateImpl.*;
-import com.uchain.crypto.BinaryData;
-import com.uchain.crypto.PrivateKey;
-import com.uchain.crypto.PublicKey;
-import com.uchain.crypto.UInt256;
+import com.uchain.crypto.*;
 import com.uchain.main.ConsensusSettings;
 import com.uchain.main.Witness;
+import lombok.val;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
@@ -82,6 +84,7 @@ public class Producer extends AbstractActor {
             Witness witness = getWitness(nextProduceTime(now, next));
             if (!(witness.getPrivkey()==null)) {
                 log.info("startProduceBlock");
+                log.info(String.valueOf(((LevelDBBlockChain)chain).getForkBase().head().getBlock().height()));
                 chain.startProduceBlock(PublicKey.apply(new BinaryData(witness.getPubkey())));
                 txPool.forEach((k,v) -> chain.produceBlockAddTransaction(v));
                 txPool.clear();
@@ -189,6 +192,22 @@ public class Producer extends AbstractActor {
 	public Receive createReceive() {
 		return receiveBuilder().match(BlockAcceptedMessage.class, msg -> {
             removeTransactionsInBlock(msg.getBlock());
+		}).match(SendRawTransaction.class, msg -> {
+			BinaryData rawTx = msg.getRawTx();
+			DataInputStream is = new DataInputStream(new ByteArrayInputStream(CryptoUtil.binaryData2array(rawTx)));
+			val tx = Transaction.deserialize(is);
+			if(tx.verifySignature()){
+				if(chain.isProducingBlock()){
+					chain.produceBlockAddTransaction(tx);
+				}
+				else{
+					txPool.put(tx.id(), tx);
+				}
+				getSender().tell(true, getSender());
+			}
+			else getSender().tell(false, getSender());
+		}).match(Boolean.class, msg ->{
+			getSender().tell(msg, getSender());
 		}).build();
 	}
 

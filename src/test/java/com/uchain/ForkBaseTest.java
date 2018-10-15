@@ -22,6 +22,7 @@ import com.uchain.main.Witness;
 import org.junit.AfterClass;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
@@ -39,13 +40,13 @@ public class ForkBaseTest {
     public ForkBaseTest() {
         Witness A = new Witness();
         A.setName("A");
-        A.setPubkey(PubA.hash160().toString());
-        A.setPrivkey(PriA.toString());
+        A.setPubkey("022ac01a1ea9275241615ea6369c85b41e2016abc47485ec616c3c583f1b92a5c8");
+        A.setPrivkey("efc382ccc0358f468c2a80f3738211be98e5ae419fc0907cb2f51d3334001471");
         this.witnesses.add(A);
         Witness B = new Witness();
         B.setName("B");
-        B.setPubkey(PubB.hash160().toString());
-        B.setPrivkey(PriB.toString());
+        B.setPubkey("0238eb90b322fac718ce10b21d451d00b7003a2a1de2a1d584a158d7b7ffee297b");
+        B.setPrivkey("485cfb9f743d9997e316f5dca216b1c6adf12aa301c1d520e020269debbebbf0");
         this.witnesses.add(B);
     }
 
@@ -62,7 +63,13 @@ public class ForkBaseTest {
     private static void deleteDir(String dir){
         try {
             //递归删除
-            //Directory(dir).deleteRecursively();
+            File scFileDir = new File(dir);
+            File TrxFiles[] = scFileDir.listFiles();
+            for(File curFile:TrxFiles ){
+                curFile.delete();
+            }
+            //删除空目录
+            scFileDir.delete();
         } catch (Exception e){
             e.printStackTrace();
         }
@@ -91,7 +98,8 @@ public class ForkBaseTest {
 
     public static ForkBase open(String dir, List<Witness> witnesses){
         Settings settings = new Settings("config");
-
+        settings.getChainSettings().getForkBaseSettings().setDir(dir);
+        settings.getConsensusSettings().setWitnessList(witnesses);
         ForkBase forkBase = new ForkBase(settings);
 
         dbs.add(forkBase);
@@ -107,10 +115,8 @@ public class ForkBaseTest {
         Block blk4a = ForkBaseTest.newBlock(PubA, PriA, blk3a);
         Block blk3b = ForkBaseTest.newBlock(PubB, PriB, blk2a);
         Block blk4b = ForkBaseTest.newBlock(PubB, PriB, blk3b);
-        ForkBase forkBase = ForkBaseTest.open("forkBase_head", witnesses);
-        System.out.println(forkBase.head());
-        //由于forkBase是从config中读取，因此初始不是null
-        //assert(forkBase.head()==null);
+        ForkBase forkBase = ForkBaseTest.open("test_forkBase_head", witnesses);
+        assert(forkBase.head()==null);
         forkBase.add(genesis);
         assert(forkBase.head().getBlock().equals(genesis));
         forkBase.add(blk1a);
@@ -126,7 +132,7 @@ public class ForkBaseTest {
 
     @Test
     public void testGet()throws IOException{
-        ForkBase forkBase = ForkBaseTest.open("forkBase_get", witnesses);
+        ForkBase forkBase = ForkBaseTest.open("test_forkBase_get", witnesses);
         assertBlock(forkBase,genesis);
         Block blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
         assertBlock(forkBase,blk1a);
@@ -141,18 +147,21 @@ public class ForkBaseTest {
     }
 
     public void assertBlock(ForkBase forkBase,Block block,Boolean beforeId,Boolean beforeHeight, Boolean afterId, Boolean afterHeight){
-        assert((forkBase.get(block.id())==null) == beforeId);
-        assert((forkBase.get(block.height())==null) == beforeHeight);
+        System.out.println(forkBase.get(block.id()));
+        assert((forkBase.get(block.id())!=null) == beforeId);
+//        assert((forkBase.get(block.height())!=null) == beforeHeight);
         forkBase.add(block);
-        assert((forkBase.get(block.id())==null) == afterId);
-        assert((forkBase.get(block.height())==null) == afterHeight);
+        assert((forkBase.get(block.id())!=null) == afterId);
+        assert((forkBase.get(block.height())!=null) == afterHeight);
     }
 
     @Test
     public void testGetNext() throws IOException{
-        ForkBase forkBase = ForkBaseTest.open("forkBase_next", witnesses);
-        assert(forkBase.getNext(genesis.id())==null);
+        ForkBase forkBase = ForkBaseTest.open("test_forkBase_next", witnesses);
+        assert (forkBase.get_head()==null);
+//        assert(forkBase.getNext(genesis.id())==null);
         forkBase.add(genesis);
+
         assert(forkBase.getNext(genesis.id())==null);
         Block blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
         Block blk1b = ForkBaseTest.newBlock(PubA, PriA, genesis);
@@ -167,24 +176,24 @@ public class ForkBaseTest {
 
     @Test
     public void testAdd()throws IOException{
-        ForkBase forkBase = ForkBaseTest.open("forkBase_add", witnesses);
-//        assert(forkBase.add(genesis));
-//        assert(!forkBase.add(genesis));
+        ForkBase forkBase = ForkBaseTest.open("test_forkBase_add", witnesses);
+        assert(forkBase.add(genesis) != null);
+        assert(forkBase.add(genesis) == null);
         Block blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
-//        assert(forkBase.add(blk1a))
+        assert(forkBase.add(blk1a) != null);
         Block blk2a = ForkBaseTest.newBlock(PubA, PriA, blk1a);
         Block blk3a = ForkBaseTest.newBlock(PubA, PriA, blk2a);
-//        assert(!forkBase.add(blk3a))
+        assert(forkBase.add(blk3a) == null );
     }
 
     @Test
     public void testSwitch() throws IOException{
         Witness C = new Witness();
         C.setName("C");
-        C.setPubkey(PubC.hash160().toString());
-        C.setPrivkey(PriC.toString());
+        C.setPubkey("0234b9b7d2909231d143a6693082665837965438fc273fbc4c507996e41394c8c1");
+        C.setPrivkey("5dfee6af4775e9635c67e1cea1ed617efb6d22ca85abfa97951771d47934aaa0");
         this.witnesses.add(C);
-        ForkBase forkBase = ForkBaseTest.open("forkBase_switch", witnesses);
+        ForkBase forkBase = ForkBaseTest.open("test_forkBase_switch", witnesses);
         Block blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
         Block blk2a = ForkBaseTest.newBlock(PubA, PriA, blk1a);
         Block blk3a = ForkBaseTest.newBlock(PubA, PriA, blk2a);
@@ -206,19 +215,19 @@ public class ForkBaseTest {
         forkBase.add(blk4a);
         assert(forkBase.get(blk1a.id()).isMaster());
         assert(forkBase.get(blk2a.id()).isMaster());
-        assert(forkBase.get(blk3a.id()).isMaster());
-        assert(forkBase.get(blk4a.id()).isMaster());
+        assert(!forkBase.get(blk3a.id()).isMaster());
+        assert(!forkBase.get(blk4a.id()).isMaster());
         forkBase.add(blk5a);
-        assert(forkBase.get(blk3b.id()).isMaster());
-        assert(forkBase.get(blk4b.id()).isMaster());
+        assert(!forkBase.get(blk3b.id()).isMaster());
+        assert(!forkBase.get(blk4b.id()).isMaster());
         assert(forkBase.get(blk3a.id()).isMaster());
         assert(forkBase.get(blk4a.id()).isMaster());
         assert(forkBase.get(blk5a.id()).isMaster());
         forkBase.add(blk4c);
-        assert(forkBase.get(blk4b.id()).isMaster());
-        assert(forkBase.get(blk3a.id()).isMaster());
-        assert(forkBase.get(blk4a.id()).isMaster());
-        assert(forkBase.get(blk5a.id()).isMaster());
+        assert(!forkBase.get(blk4b.id()).isMaster());
+        assert(!forkBase.get(blk3a.id()).isMaster());
+        assert(!forkBase.get(blk4a.id()).isMaster());
+        assert(!forkBase.get(blk5a.id()).isMaster());
         assert(forkBase.get(blk3b.id()).isMaster());
         assert(forkBase.get(blk4c.id()).isMaster());
     }
@@ -227,10 +236,10 @@ public class ForkBaseTest {
     public void testRemoveFork()throws IOException{
         Witness C = new Witness();
         C.setName("C");
-        C.setPubkey(PubC.hash160().toString());
-        C.setPrivkey(PriC.toString());
+        C.setPubkey("0234b9b7d2909231d143a6693082665837965438fc273fbc4c507996e41394c8c1");
+        C.setPrivkey("5dfee6af4775e9635c67e1cea1ed617efb6d22ca85abfa97951771d47934aaa0");
         this.witnesses.add(C);
-        ForkBase forkBase = ForkBaseTest.open("forkBase_removeFork", witnesses);
+        ForkBase forkBase = ForkBaseTest.open("test_forkBase_removeFork", witnesses);
         Block blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
         Block blk2a = ForkBaseTest.newBlock(PubA, PriA, blk1a);
         Block blk3a = ForkBaseTest.newBlock(PubA, PriA, blk2a);
@@ -265,7 +274,7 @@ public class ForkBaseTest {
     }
     @Test
     public void testFork()throws IOException{
-        ForkBase forkBase = ForkBaseTest.open("forkBase_fork", witnesses);
+        ForkBase forkBase = ForkBaseTest.open("test_forkBase_fork", witnesses);
         Block blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
         Block blk2a = ForkBaseTest.newBlock(PubA, PriA, blk1a);
         Block blk3a = ForkBaseTest.newBlock(PubA, PriA, blk2a);

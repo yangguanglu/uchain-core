@@ -68,6 +68,7 @@ public class ForkBase {
 
 	public ForkItem get(int height){
         List<UInt256> list = indexByHeight.get(height,true);
+        if(list == null) return null;
         if(list != null && list.size()>0) {
             UInt256 uInt256 = list.get(0);
             return get(uInt256);
@@ -82,6 +83,7 @@ public class ForkBase {
 	 */
 	public UInt256 getNext(UInt256 id) {
         List<UInt256> list = indexByPrev.get(id);
+        if(list == null) return null;
         for (int i = 0; i < list.size(); i++) {
             ForkItem current = indexById.get(list.get(i));
             if(current.isMaster())
@@ -310,7 +312,10 @@ public class ForkBase {
 		Block blk = item.getBlock();
 		indexById.put(blk.id(), item);
 		indexByPrev.put(blk.prev(), blk.id());
+		//log.info("createIndex before************************");
+		//log.info(blk.height() +":::::::::::::::::" + blk.id());
 		indexByHeight.put(blk.height(), item.isMaster(), blk.id());
+		//log.info("createIndex after************************");
 		indexByConfirmedHeight.put(item.confirmedHeight(), blk.height(), blk.id());
 	}
 

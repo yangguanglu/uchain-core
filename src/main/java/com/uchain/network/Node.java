@@ -51,7 +51,7 @@ public class Node extends AbstractActor{
 				log.error("failed insert block "+msg.getBlock().height()+", ("+msg.getBlock().id()+") to db");
 				if(msg.getBlock().height() > chain.getLatestHeader().getIndex()) {
 					log.info("send GetBlocksMessage");
-					getSender().tell(new GetBlocksMessage(new GetBlocksPayload(Arrays.asList(chain.getLatestHeader().id()), UInt256.Zero())).pack(), getSelf());
+                    peerHandlerManager.tell(new GetBlocksMessage(new GetBlocksPayload(Arrays.asList(chain.getLatestHeader().id()), UInt256.Zero())).pack(), getSelf());
 				}
 			}
 		}).match(GetBlocksMessage.class, msg -> {
@@ -59,7 +59,7 @@ public class Node extends AbstractActor{
 			List<UInt256> hashs = Lists.newArrayList();
 			UInt256 hash = msg.getBlockHashs().getHashStart().get(0);
 			if(hash.equals(UInt256.Zero())) {
-				getSender().tell(new InventoryMessage(new InventoryPayload(InventoryType.Block, Arrays.asList(chain.getLatestHeader().id()))).pack(), getSelf());
+                peerHandlerManager.tell(new InventoryMessage(new InventoryPayload(InventoryType.Block, Arrays.asList(chain.getLatestHeader().id()))).pack(), getSelf());
 			}else {
 				hashs.add(hash);
 				UInt256 next = chain.getNextBlockId(hash);
@@ -69,7 +69,7 @@ public class Node extends AbstractActor{
 				}
 
 				log.info("send InventoryMessage");
-				getSender().tell(new InventoryMessage(new InventoryPayload(InventoryType.Block, hashs)).pack(), getSelf());
+                peerHandlerManager.tell(new InventoryMessage(new InventoryPayload(InventoryType.Block, hashs)).pack(), getSelf());
 			}
 		}).match(BlocksMessage.class, msg -> {
             log.info("received "+msg.getBlocksPayload().getBlocks().size()+" blocks");
@@ -82,7 +82,7 @@ public class Node extends AbstractActor{
                 }
             });
             // try to get more blocks if have any
-            getSender().tell(new GetBlocksMessage(new GetBlocksPayload(Arrays.asList(chain.getLatestHeader().id()), UInt256.Zero())).pack(), getSelf());
+            peerHandlerManager.tell(new GetBlocksMessage(new GetBlocksPayload(Arrays.asList(chain.getLatestHeader().id()), UInt256.Zero())).pack(), getSelf());
         }).match(InventoryMessage.class, msg -> {
 			log.info("received Inventory");
 	        if (msg.getInv().getInvType() == InventoryType.Block) {
@@ -94,9 +94,10 @@ public class Node extends AbstractActor{
 	        			}
 	        		}
 	        	});
+                log.info("dddddddddddd="+newBlocks.size());
 	        	if(newBlocks.size() > 0) {
 	        		log.info("send GetDataMessage "+newBlocks);
-	        		getSender().tell(new GetDataMessage(new Inventory(InventoryType.Block, newBlocks)).pack(), getSelf());
+                    peerHandlerManager.tell(new GetDataMessage(new InventoryPayload(InventoryType.Block, newBlocks)).pack(), getSelf());
 	        	}
 	        }
 		}).match(GetDataMessage.class, msg -> {
@@ -122,7 +123,7 @@ public class Node extends AbstractActor{
                     }
                 }
                 if (blocks.size() > 0) {
-                    getSender().tell(new BlocksMessage(new BlocksPayload(blocks)).pack(),getSelf());
+                    peerHandlerManager.tell(new BlocksMessage(new BlocksPayload(blocks)).pack(),getSelf());
                 }
 	        }
 		}).build();

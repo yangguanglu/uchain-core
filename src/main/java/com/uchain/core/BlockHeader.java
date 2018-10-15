@@ -7,6 +7,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uchain.common.Serializabler;
@@ -23,6 +24,8 @@ public class BlockHeader implements Identifier<UInt160> {
     private long timeStamp;
     private UInt256 merkleRoot;
     private UInt256 prevBlock;
+
+    @JsonIgnore
     private PublicKey producer;
     private BinaryData producerSig;
     private int version = 0x01;

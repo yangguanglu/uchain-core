@@ -13,6 +13,8 @@ public class CommandHandler {
             Command commandToSend = constructCommandToSend(command);
             String path = commandToSend.path;
             String body = DataProcessor.JsonMapperTo(commandToSend.commandSuffixes);
+            System.out.println("**************");
+            System.out.println(body);
             httpResponse = ApacheHttpClient.getWithUrl(path, body);
         }
         catch (IOException e){

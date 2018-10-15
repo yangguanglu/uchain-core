@@ -2,10 +2,7 @@ package com.uchain.common;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.uchain.crypto.BinaryData;
-import com.uchain.crypto.CryptoUtil;
-import com.uchain.crypto.Fixed8;
-import com.uchain.crypto.UInt256;
+import com.uchain.crypto.*;
 import com.uchain.util.Utils;
 import lombok.val;
 
@@ -126,4 +123,20 @@ public class Serializabler {
 		return byteMap;
 	}
 
+	public static <T extends Serializable> T readObj(DataInputStream is,/*T t*/String str){
+		/*if(t instanceof UInt256){
+			return (T)UInt256.deserialize(is);
+		}
+		else if(t instanceof UInt160){
+			return (T)UInt160.deserialize(is);
+		}*/
+
+		if("256" == str){
+			return (T)UInt256.deserialize(is);
+		}
+		else if("160" == str){
+			return (T)UInt160.deserialize(is);
+		}
+		return null;
+	}
 }

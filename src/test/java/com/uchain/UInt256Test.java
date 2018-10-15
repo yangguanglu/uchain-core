@@ -9,6 +9,7 @@ package com.uchain;
  * @Version: 1.0
  * *************************************************************/
 
+import com.uchain.core.Account;
 import com.uchain.crypto.UInt160;
 import com.uchain.crypto.UInt256;
 import lombok.val;
@@ -17,37 +18,26 @@ import scala.Array;
 
 import java.io.*;
 import java.util.Arrays;
+import java.util.HashMap;
 
 public class UInt256Test {
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testCtorNull(){
-        try{
-            new UInt256(null);
-        }catch (IllegalArgumentException e){
-            System.out.println("Catch IllegalArgumentException!");
-        }
+        new UInt256(null);
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testCtorWrongSize1(){
-        try{
             byte[] arr = new byte[31];
             Arrays.fill(arr,(byte)0);
             new UInt256(arr);
-        }catch (IllegalArgumentException e){
-            System.out.println("Catch IllegalArgumentException!");
-        }
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testCtorWrongSize2(){
-        try{
             byte[] arr = new byte[33];
             Arrays.fill(arr,(byte)0);
             new UInt256(arr);
-        }catch (IllegalArgumentException e){
-            System.out.println("Catch IllegalArgumentException!");
-        }
     }
 
     @Test
@@ -84,16 +74,18 @@ public class UInt256Test {
         }
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testCompareNull(){
-        UInt160.Zero().compare(null);
+        UInt256.Zero().compare(null);
     }
 
     @Test
-    public void testSerialize(){
-        /*val o = new SerializerTest(UInt256.deserialize)
-        o.test(SerializerTest.testHash256())
-        o.test(UInt256.Zero)*/
+    public void testSerialize() throws IOException{
+        val bis = new ByteArrayInputStream(new byte[]{1,2});
+        DataInputStream is = new DataInputStream(bis);
+        val o = new SerializerTest(UInt256.deserialize(is),is);
+        o.test(SerializerTest.testHash256());
+        o.test(UInt256.Zero());
     }
 
 }

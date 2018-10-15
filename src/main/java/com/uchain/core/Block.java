@@ -1,5 +1,7 @@
 package com.uchain.core;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.uchain.common.Serializabler;
 import com.uchain.crypto.UInt160;
 import com.uchain.crypto.UInt256;

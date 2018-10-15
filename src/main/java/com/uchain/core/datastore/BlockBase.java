@@ -57,6 +57,10 @@ public class BlockBase{
 
     public Block getBlock(int height){
         UInt256 key = heightStore.get(height);
-        return getBlock(key);
+        if(key!=null) {
+            return getBlock(key);
+        }else {
+            return null;
+        }
     }
 }

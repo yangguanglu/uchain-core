@@ -21,15 +21,23 @@ import com.uchain.crypto.UInt256;
 import lombok.val;
 
 public class SerializerTest<A extends Serializable> {
+    private A value;
+    private DataInputStream deserializer;
 
+    public SerializerTest(){
 
+    }
+
+    public SerializerTest(A arg,DataInputStream deserializer){
+        this.value = arg;
+        this.deserializer = deserializer;
+    }
     static boolean eqComparer(Serializable x, Serializable y){
         return x.equals(y);
     }
 
-    @Test
-    public void test() throws IOException{
-        Account value = null;
+    //@Test
+    public void test(Account value) throws IOException{
         val bos = new ByteArrayOutputStream();
         val os = new DataOutputStream(bos);
         Serializabler.write(os, value);
@@ -37,6 +45,27 @@ public class SerializerTest<A extends Serializable> {
         val bis = new ByteArrayInputStream(ba);
         val is = new DataInputStream(bis);
         val accountDeserializer = Account.deserialize(is);
+
+    }
+
+    public void test(A value){
+        this.test(value,deserializer);
+    }
+
+    public void test(A value,DataInputStream deserializer){
+        val bos = new ByteArrayOutputStream();
+        val os = new DataOutputStream(bos);
+        //os.write(os);
+        Serializabler.write(os,value);
+        val ba = bos.toByteArray();
+        val bis = new ByteArrayInputStream(ba);
+        val is = new DataInputStream(bis);
+        if(value instanceof UInt256){
+            assert(eqComparer(Serializabler.readObj(is,"256"), value));
+        }
+        else if(value instanceof UInt160){
+            assert(eqComparer(Serializabler.readObj(is,"160"), value));
+        }
 
     }
 
@@ -57,63 +86,6 @@ public class SerializerTest<A extends Serializable> {
     public static UInt160 testHash160() throws IOException {
         String str = "test";
         return UInt160.fromBytes(Crypto.hash160(str.getBytes("UTF-8")));
-    }
-
-    @Test
-    public void Test256() throws IOException{
-        UInt256 value = testHash256();
-        System.out.println("before:==>"+value);
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        DataOutputStream os = new DataOutputStream(bos);
-        Serializabler.write(os, value);
-
-        val ba = bos.toByteArray();
-        val bis = new ByteArrayInputStream(ba);
-        val is = new DataInputStream(bis);
-        UInt256 test256 = UInt256.deserialize(is);
-        System.out.println("after:==>"+test256);
-
-        assert (value.equals(test256));
-
-    }
-
-    @Test
-    public void Test160() throws IOException{
-        UInt160 value = testHash160();
-        System.out.println("before:==>"+value);
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        DataOutputStream os = new DataOutputStream(bos);
-        Serializabler.write(os, value);
-
-        val ba = bos.toByteArray();
-        val bis = new ByteArrayInputStream(ba);
-        val is = new DataInputStream(bis);
-        UInt160 test160 = UInt160.deserialize(is);
-        System.out.println("after:==>"+test160);
-
-        assert (value.equals(test160));
-
-    }
-
-    @Test
-    public void TestMap()throws Exception{
-        Map<UInt256, Fixed8> value = Maps.newLinkedHashMap();
-        value.put(testHash256(),new Fixed8(1000000000));
-        value.put(testHash256("Hello"),new Fixed8(2000000000));
-        System.out.println("before:==>"+value);
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        DataOutputStream os = new DataOutputStream(bos);
-        Serializabler.writeMap(os, value);
-
-        val ba = bos.toByteArray();
-        val bis = new ByteArrayInputStream(ba);
-        val is = new DataInputStream(bis);
-        Map<UInt256, Fixed8> testMap = Serializabler.readMap(is,true);
-        System.out.println("after:==>"+testMap);
-
-        for(Map.Entry obj:value.entrySet()){
-            assert (testMap.get(obj.getKey()).equals(obj.getValue()));
-        }
     }
 
 }

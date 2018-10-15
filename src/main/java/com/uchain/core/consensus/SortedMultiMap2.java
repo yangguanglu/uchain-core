@@ -29,48 +29,22 @@ public class SortedMultiMap2<K1,K2,V> implements Iterable<Object>{
     }
 
     public List<V> get(K1 k1,K2 k2) {
-//        if (k1 instanceof Integer){
-//            String tempk1 = String.valueOf(k1);
-//            return container.get(tempk1).get(k2);
-//        }else{
+        if(container.get(k1)!=null){
             return container.get(k1).get(k2);
-//        }
+        }else{
+            return null;
+        }
     }
 
     public void put(K1 k1,K2 k2,V v) {
-//        if (k1 instanceof Integer){
-//            String tempk1 = String.valueOf(k1);
-//            if (k2 instanceof Integer){
-//                String tempk2 = String.valueOf(k2);
-//                if (!container.containsKey(tempk1)) {
-//                    SortedMultiMap1<K2, V> sortedMultiMap1 = new SortedMultiMap1<>(sortedMultiMap1SortType);
-//                    sortedMultiMap1.put((K2)tempk2, v);
-//                    container.put((K1)tempk1, sortedMultiMap1);
-//                } else {
-//                    container.get(tempk1).put((K2) tempk2, v);
-//                }
-//            }else if(k2 instanceof Boolean){
-//                Boolean tempk2 = Boolean.valueOf((Boolean)k2);
-//                if (!container.containsKey(tempk1)) {
-//                    SortedMultiMap1<K2, V> sortedMultiMap1 = new SortedMultiMap1<>(sortedMultiMap1SortType);
-//                    sortedMultiMap1.put((K2)tempk2, v);
-//                    container.put((K1)tempk1, sortedMultiMap1);
-//                } else {
-//                    container.get(tempk1).put((K2) tempk2, v);
-//                }
-//            }
-//        }else {
             if (!container.containsKey(k1)) {
                 SortedMultiMap1<K2, V> sortedMultiMap1 = new SortedMultiMap1<>(sortedMultiMap1SortType);
-//                sortedMultiMap1.put(k2, v);
                 container.put(k1, sortedMultiMap1);
             }
         container.get(k1).put(k2, v);
-//        }
     }
 
     public List<V> remove(K1 k1,K2 k2) {
-//        String tempk1 = String.valueOf(k1);
         if(container.containsKey(k1)) {
             List<V> list = container.get(k1).remove(k2);
             if(container.get(k1).size() == 0) {

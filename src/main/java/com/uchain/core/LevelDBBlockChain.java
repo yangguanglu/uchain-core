@@ -73,8 +73,7 @@ public class LevelDBBlockChain implements BlockChain{
         genesisBlockHeader =  BlockHeader.build(0, settings.getChainSettings().getChain_genesis_timeStamp(),
                 UInt256.Zero(), UInt256.Zero(), genesisProducer, genesisProducerPrivKey);
 
-        genesisBlock = new Block(genesisBlockHeader,Transaction.transactionToArrayList(genesisTx));
-
+        genesisBlock = Block.build(genesisBlockHeader, Transaction.transactionToArrayList(genesisTx));
         latestHeader= genesisBlockHeader;
 
         List<Transaction> pendingTxs = Lists.newArrayList();  // TODO: save to DB?
@@ -100,6 +99,7 @@ public class LevelDBBlockChain implements BlockChain{
             latestHeader = forkBase.head().getBlock().getHeader();
         else
             latestHeader = blockBase.head();
+        log.info("populate() latest block "+latestHeader.getIndex()+" "+latestHeader.id());
     }
 
     @Override
@@ -255,6 +255,7 @@ public class LevelDBBlockChain implements BlockChain{
     public Block produceBlockFinalize(PublicKey producer,PrivateKey privateKey,Long timeStamp){
         assert(!pendingTxs.isEmpty());
         ForkItem forkHead = forkBase.head();
+        System.out.println("aaaaaaaaaaaa="+forkHead.getBlock().height());
         UInt256 merkleRoot = MerkleTree.root(pendingTxs.stream().map(v -> v.id()).collect(Collectors.toList()));
         BlockHeader header = BlockHeader.build(
                 forkHead.getBlock().height() + 1, timeStamp, merkleRoot,

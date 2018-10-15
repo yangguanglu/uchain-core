@@ -98,9 +98,9 @@ public class BlockMessageImpl {
 	@Setter
 	public static class GetDataMessage implements PackMessage {
 		private MessageType messageType;
-		private Inventory inv;
+		private InventoryPayload inv;
 
-		public GetDataMessage(Inventory inv) {
+		public GetDataMessage(InventoryPayload inv) {
 			this.messageType = MessageType.Getdata;
 			this.inv = inv;
 		}
