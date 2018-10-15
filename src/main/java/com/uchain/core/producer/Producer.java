@@ -39,7 +39,7 @@ public class Producer extends AbstractActor {
 	}
 
 	private Map<UInt256, Transaction> txPool = new HashMap<UInt256, Transaction>();
-	private boolean canProduce = true;
+	private boolean canProduce = false;
 
 	@Override
 	public void preStart() {

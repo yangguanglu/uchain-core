@@ -17,7 +17,7 @@ public class SortedMultiMap1Test {
 //		sortedMultiMap1.put("7", "dd");
 
 
-        SortedMultiMap1<Integer, UInt256> sortedMultiMap2 = new SortedMultiMap1<Integer, UInt256>("reverse");
+        SortedMultiMap1<Integer, UInt256> sortedMultiMap2 = new SortedMultiMap1<Integer, UInt256>("asc");
         UInt256 ss0 = UInt256.fromBytes(Crypto.hash256(("test" + 0).getBytes("UTF-8")));
         UInt256 ss1 = UInt256.fromBytes(Crypto.hash256(("test" + 1).getBytes("UTF-8")));
         UInt256 ss2 = UInt256.fromBytes(Crypto.hash256(("test" + 2).getBytes("UTF-8")));
@@ -34,7 +34,22 @@ public class SortedMultiMap1Test {
         sortedMultiMap2.put(10, ss0);
         sortedMultiMap2.put(11, ss0);
 
-        System.out.println(sortedMultiMap2.size());
+
         System.out.println(sortedMultiMap2.head().first);
+        sortedMultiMap2.remove(1);
+        System.out.println(sortedMultiMap2.size()+" "+sortedMultiMap2.head().first);
+
+
+//        Map<Integer, List<String>> container = new TreeMap(new MapKeyComparator<Integer>());
+//        List list=new ArrayList();list.add("string1");list.add("string2");
+//        container.put(1000, null);
+//        container.put(2,null);
+//        container.put(3,list);
+//        container.put(4,list);
+//
+//        System.out.println(container.size());
+//        container.remove(2);
+//        System.out.println(container.size());
+
     }
 }

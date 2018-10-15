@@ -8,19 +8,18 @@
 
 package com.uchain;
 
-import com.uchain.crypto.CryptoUtil;
+import com.uchain.crypto.*;
+import lombok.val;
 import lombok.var;
 import org.junit.Test;
 
 import java.io.IOException;
-import com.uchain.crypto.BinaryData;
-import com.uchain.crypto.PublicKeyHash;
-import com.uchain.crypto.PrivateKey;
-import lombok.val;
 public class AddressTest {
     @Test
     public void testHashToAddress() throws IOException {
 //20 bytes data
+
+        System.out.println(PublicKey.apply(new BinaryData("03b4534b44d1da47e4b4a504a210401a583f860468dec766f507251a057594e682")).toAddress());
 
         val address1 = PublicKeyHash.toAddress(CryptoUtil.binaryData2array(new BinaryData("0000000000000000000000000000000000000000")));
         //20 bytes data

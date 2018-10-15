@@ -2,8 +2,9 @@ package com.uchain.core.consensus;
 
 import com.google.common.collect.Lists;
 
-import java.util.*;
-import java.util.function.Function;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class SortedMultiMap1<K, V> {
 	private Map<K, List<V>> container = null;
@@ -29,58 +30,49 @@ public class SortedMultiMap1<K, V> {
 	}
 
 	public List<V> get(K k) {
-		if (k instanceof Integer) {
-			String tempk = String.valueOf(k);
-			return container.get(tempk);
-		}else if(k instanceof Boolean){
-			Boolean tempk = Boolean.valueOf((Boolean) k);
-			return container.get(tempk);
-		}else {
+//		if (k instanceof Integer) {
+//			String tempk = String.valueOf(k);
+//			return container.get(tempk);
+//		}else if(k instanceof Boolean){
+//			Boolean tempk = Boolean.valueOf((Boolean) k);
+//			return container.get(tempk);
+//		}else {
 			return container.get(k);
-		}
+//		}
 	}
 
 	public void put(K k, V v) {
-		if (k instanceof Integer){
-			String tempk = String.valueOf(k);
-			if (!container.containsKey(tempk)) {
-				List<V> list = Lists.newArrayList();
-				list.add(v);
-				container.put((K) tempk, list);
-			} else {
-				container.get(tempk).add(v);
-			}
-		}else if (k instanceof Boolean){
-			Boolean tempk = Boolean.valueOf((Boolean) k);
-			if (!container.containsKey(tempk)) {
-				List<V> list = Lists.newArrayList();
-				list.add(v);
-				container.put((K) tempk, list);
-			} else {
-				container.get(tempk).add(v);
-			}
-		}else {
+//		if (k instanceof Integer){
+//			String tempk = String.valueOf(k);
+//			if (!container.containsKey(tempk)) {
+//				List<V> list = Lists.newArrayList();
+//				list.add(v);
+//				container.put((K) tempk, list);
+//			} else {
+//				container.get(tempk).add(v);
+//			}
+//		}else if (k instanceof Boolean){
+//			Boolean tempk = Boolean.valueOf((Boolean) k);
+//			if (!container.containsKey(tempk)) {
+//				List<V> list = Lists.newArrayList();
+//				list.add(v);
+//				container.put((K) tempk, list);
+//			} else {
+//				container.get(tempk).add(v);
+//			}
+//		}else {
 			if (!container.containsKey(k)) {
-				List<V> list = Lists.newArrayList();
-				list.add(v);
-				container.put(k, list);
-			} else {
-				container.get(k).add(v);
+//				List<V> list = Lists.newArrayList();
+//				list.add(v);
+				container.put(k, Lists.newArrayList());
 			}
-		}
+				container.get(k).add(v);
+
+//		}
 	}
 
 	public List<V> remove(K k) {
-		Class<? extends Object> keyClass;
-		Set<K> s = container.keySet();
-		//只需要判断第一个元素
-		keyClass = s.stream().findFirst().map((Function<K, ? extends Class<?>>) K::getClass).orElse(null);
-		if(keyClass.equals(String.class)){
-			String tempk = String.valueOf(k);
-			return container.remove(tempk);
-		}else{
-			return container.remove(k);
-		}
+        return container.remove(k);
 
 	}
 

@@ -162,7 +162,7 @@ public class ForkBase {
         ForkItem old = _head;
         _head = indexById.get(indexByConfirmedHeight.head().third);
         assert(_head != null);
-        if(old ==null){
+        if(old == null){
             twoTuple =new TwoTuple<>(_head,_head);
         }else{
             twoTuple =new TwoTuple<>(old,_head);
@@ -226,16 +226,7 @@ public class ForkBase {
         Block block = null;
 		ThreeTuple<Integer, Boolean, UInt256> threeTuple = indexByHeight.head();
 		if(threeTuple!=null){
-			Integer first = 0;
-			Object firstObject = threeTuple.first;
-			if(firstObject instanceof String){
-				String firstTemp = (String)firstObject;
-				first = Integer.parseInt(firstTemp);
-			}else if(firstObject instanceof Integer){
-				first = (Integer)firstObject;
-			}
-			log.info("aaaaaaaaaa="+first+"   "+height);
-			if(first < height){
+			if(threeTuple.first < height){
 				ForkItem item = indexById.get(threeTuple.third);
 				if(item !=null && item.isMaster()) {
                     block = item.getBlock();
