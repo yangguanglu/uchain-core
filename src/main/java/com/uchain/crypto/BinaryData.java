@@ -33,8 +33,8 @@ public class BinaryData/* implements Serializable*/ {
         return length;
     }
 
-//    @Override
-//    public String toString() {
-//        return Hex.toHexString(CryptoUtil.listTobyte(getData()));
-//    }
+    @Override
+    public String toString() {
+        return Hex.toHexString(CryptoUtil.listTobyte(data));
+    }
 }

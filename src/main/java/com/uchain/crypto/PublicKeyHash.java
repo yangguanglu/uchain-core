@@ -14,7 +14,7 @@ public class PublicKeyHash {
 			byte[] decode = Base58Check.decode(address);
 			 if (decode.length == 22) {
 				 byte[] dest = new byte[20];
-				 System.arraycopy(decode, 2, dest, 0, 10);
+				 System.arraycopy(decode, 2, dest, 0, 20);
 				 return UInt160.fromBytes(dest);
 			 }
 		}else {

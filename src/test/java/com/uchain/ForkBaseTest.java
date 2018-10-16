@@ -256,7 +256,7 @@ public class ForkBaseTest {
         forkBase.add(blk3a);
         forkBase.add(blk4a);
         forkBase.add(blk5a);
-//        assert(forkBase.removeFork(blk4a.id()));
+        assert(forkBase.removeFork(blk4a.id()));
         assert(forkBase.get(blk1a.id())!=null);
         assert(forkBase.get(blk2a.id())!=null);
         assert(forkBase.get(blk3a.id())!=null);
@@ -264,13 +264,13 @@ public class ForkBaseTest {
         assert(forkBase.get(blk4b.id())!=null);
         assert(forkBase.get(blk4a.id())==null);
         assert(forkBase.get(blk5a.id())==null);
-//        assert(forkBase.removeFork(blk2a.id));
+        assert(forkBase.removeFork(blk2a.id()));
         assert(forkBase.get(blk1a.id())!=null);
         assert(forkBase.get(blk2a.id())==null);
         assert(forkBase.get(blk3a.id())==null);
         assert(forkBase.get(blk3b.id())==null);
         assert(forkBase.get(blk4b.id())==null);
-//        assert(!forkBase.removeFork(blk3c.id));
+        assert(!forkBase.removeFork(blk3c.id()));
     }
     @Test
     public void testFork()throws IOException{

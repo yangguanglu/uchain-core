@@ -4,6 +4,8 @@ import akka.actor.ActorRef;
 import akka.pattern.Patterns;
 import com.uchain.core.LevelDBBlockChain;
 import com.uchain.core.producer.SendRawTransaction;
+import com.uchain.crypto.BinaryData;
+import com.uchain.crypto.CryptoUtil;
 import lombok.val;
 import scala.concurrent.Await;
 import scala.concurrent.Future;
@@ -72,15 +74,16 @@ public class RestfulResource {
         return responseStr;
     }
 
-    @POST
+    @GET
     @Path("{param:sendrawtransaction}")
     @Consumes({MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON})
     @Produces(MediaType.TEXT_PLAIN)
     public String sendRawTransaction(@PathParam("param") String requestParam, @QueryParam("query") String query,
                                    @Context Request request, @Context UriInfo uriInfo, @Context HttpHeaders httpHeaders){
-        String rawTx = CommandReceiverService.sendRawTransaction(query, nodeActor, producerActor, chain);
+        BinaryData rawTx = CommandReceiverService.sendRawTransaction(query, nodeActor, producerActor, chain);
 
-        Future f = Patterns.ask(producerActor, new SendRawTransaction(), 1000);
+        //BinaryData tx = CryptoUtil.fromHexString(rawTx);
+        Future f = Patterns.ask(producerActor, new SendRawTransaction(rawTx), 1000);
         try {
             boolean re = (boolean) Await.result(f, Duration.create(6, TimeUnit.SECONDS));
 

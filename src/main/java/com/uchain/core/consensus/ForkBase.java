@@ -18,13 +18,11 @@ import com.uchain.storage.ConnFacory;
 import com.uchain.storage.LevelDbStorage;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.val;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 @Setter
@@ -183,12 +181,12 @@ public class ForkBase {
 		twoTuple.first.forEach(item -> {
 			ForkItem newItem = new ForkItem(item.getBlock(),item.getLastProducerHeight(),false);
             forkStore.set(newItem.getBlock().id(), newItem, batch);
-			items.add(item);
+			items.add(newItem);
 		});
 		twoTuple.second.forEach(item -> {
             ForkItem newItem = new ForkItem(item.getBlock(),item.getLastProducerHeight(),true);
             forkStore.set(newItem.getBlock().id(), newItem, batch);
-            items.add(item);
+            items.add(newItem);
         });
 		if(db.applyBatch(batch)){
 			items.forEach(item -> updateIndex(item));
@@ -203,20 +201,16 @@ public class ForkBase {
 	/**
 	 * 初始化
 	 */
-	private void init() {
-        byte[] kData = new byte[forkStore.getPrefixBytes().length];
-        System.arraycopy(forkStore.getPrefixBytes(), 0, kData, 0, forkStore.getPrefixBytes().length);
-        TwoTuple<byte[], byte[]> twoTuple = db.find(forkStore.getPrefixBytes());
-        if(twoTuple!=null) {
-            forkStore.getKeyConverter().fromBytes(kData);
-            ForkItem forkItem = forkStore.getValConverter().fromBytes(twoTuple.second);
-            createIndex(forkItem);
-        }
-        if (indexByConfirmedHeight.size() == 0) {
-            _head = null;
-        }else {
-            _head = indexById.get(indexByConfirmedHeight.head().third);
-        }
+
+	public void init(){
+		val entryList = db.find(forkStore.getPrefixBytes());
+		entryList.forEach(entry -> {
+			byte[] kData = new byte[forkStore.getPrefixBytes().length];
+			System.arraycopy(entry.getKey(), 0, kData, 0, forkStore.getPrefixBytes().length);
+			forkStore.getKeyConverter().fromBytes(kData);
+			ForkItem forkItem = forkStore.getValConverter().fromBytes(entry.getValue());
+			createIndex(forkItem);
+		});
 	}
 
 	/**
@@ -301,7 +295,7 @@ public class ForkBase {
 	 * @return
 	 */
 	private ForkItem getPrev(ForkItem item) {
-		ForkItem prev = get(item.getBlock().getHeader().getPrevBlock());
+		ForkItem prev = get(item.getBlock().prev());
 		if(prev == null) {
 			throw new UnExpectedError("unexpected error");
 		}
@@ -342,5 +336,53 @@ public class ForkBase {
 		}
         indexByHeight.put(height, branch, id);
 		indexById.put(id, newItem);
+	}
+
+	public boolean removeFork(UInt256 id){
+		ForkItem item = indexById.get(id);
+		if(null == item) return false;
+		List<ForkItem> queue = new LinkedList<ForkItem>();
+		queue.add(item);
+		//队列里存放应该是indexByPrev
+		/*List<ForkItem> ancestors = getAncestors(indexByPrev.get(id));
+		ancestors.forEach(fortItem -> queue.offer(fortItem));*/
+
+		if (removeAll(db.batchWrite(),queue)) {
+			queue.forEach(forkItem->deleteIndex(forkItem));
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	public List<ForkItem> getAncestors(List<UInt256> ancestors) {
+		List<ForkItem> res = new ArrayList<>();
+		if(ancestors != null)
+			ancestors.forEach(id->{
+				ForkItem tmp = indexById.get(id);
+				if(tmp != null){
+					res.add(tmp);
+				}
+			});
+		return res;
+	}
+
+	public Boolean removeAll(Batch batch,List<ForkItem> queue){
+		try {
+			int i = 0;
+			while (i < queue.size()) {
+				ForkItem toRemove = queue.get(i);
+				UInt256 toRemoveId = toRemove.getBlock().id();
+				List<ForkItem> ancestors = getAncestors(indexByPrev.get(toRemoveId));
+				if(ancestors != null)
+					ancestors.forEach(fortItem -> queue.add(fortItem));
+				forkStore.delete(toRemoveId, batch);
+				i++;
+			}
+			return true;
+		}catch (Exception e){
+			e.printStackTrace();
+			return false;
+		}
 	}
 }

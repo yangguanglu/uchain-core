@@ -5,7 +5,7 @@ public class APP {
         System.out.println("Welcome to CLI, type \"help\" for command list:");
         while (true) {
             Scanner scanner = new Scanner(System.in);
-            String command = scanner.nextLine().toLowerCase().trim();
+            String command = scanner.nextLine().trim();
 //            if(command.contains("help")){
 //                CommandHandler.readResourceTxt("help.txt");
 //                return;

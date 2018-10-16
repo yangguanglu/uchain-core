@@ -62,7 +62,7 @@ jar {
     configurations.runtime.each {someString = someString + " lib\\"+it.name}
 
     manifest {
-        attributes 'Main-Class': 'com.uchain.Main'
+        attributes 'Main-Class': 'com.uchain.main.MainApp'
         attributes 'Class-Path': someString
     }
 }

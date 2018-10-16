@@ -92,9 +92,11 @@ public class CommandReceiverService {
 //        }
     }
 
-    static public String sendRawTransaction(String query, ActorRef nodeActor, ActorRef producerActor, LevelDBBlockChain chain){
+    static public BinaryData sendRawTransaction(String query, ActorRef nodeActor, ActorRef producerActor, LevelDBBlockChain chain){
 
+        System.out.println("!!!!!!!!!!!!!!!!!!!!");
         ArrayList<CommandSuffix> commandSuffixes = parseCommandSuffixes(query);
+
         BinaryData privKeyBin = CryptoUtil.fromHexString(commandSuffixes.get(0).getSuffixValue());
 
 
@@ -105,11 +107,17 @@ public class CommandReceiverService {
         val amount = BigDecimal.valueOf(Integer.valueOf(commandSuffixes.get(3).getSuffixValue()));
         val nonce = Integer.valueOf(commandSuffixes.get(4).getSuffixValue());
 
+        val keyHash = PublicKeyHash.fromAddress(toAddress);
+
         val tx = new Transaction(TransactionType.Transfer, privKey.publicKey(), PublicKeyHash.fromAddress(toAddress),
                 "", Fixed8.fromDecimal(amount), UInt256.fromBytes(CryptoUtil.binaryData2array(CryptoUtil.fromHexString(assetId))),
                 (long)nonce, CryptoUtil.array2binaryData(BinaryData.empty),  CryptoUtil.array2binaryData(BinaryData.empty), 0x01, null);
-
-        tx.sign(privKey);
+        try {
+            tx.sign(privKey);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
 
         byte[] txBytes = Serializabler.toBytes(tx);
         Byte[] txBYTES = new Byte[txBytes.length];
@@ -119,7 +127,8 @@ public class CommandReceiverService {
         List<Byte> txList = Arrays.asList(txBYTES);
         val txRawData = new BinaryData(txList);
         val rawTx = "{\"rawTx\":\""  + CryptoUtil.toHexString(txRawData)  + "\"}";
-        return rawTx;
+        System.out.println("!!!!!!!!!!!!!!!!!!!!::::" + rawTx);
+        return txRawData;
 //        val blocks = new ArrayList<Block>(blockNum);
 ////            return Serializabler.JsonMapperTo(blocks);
 //            return String.valueOf(blockNum);

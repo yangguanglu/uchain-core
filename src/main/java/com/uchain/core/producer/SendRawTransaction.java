@@ -8,4 +8,8 @@ import lombok.Setter;
 @Setter
 public class SendRawTransaction {
     private BinaryData rawTx;
+
+    public SendRawTransaction(BinaryData rawTx){
+        this.rawTx = rawTx;
+    }
 }

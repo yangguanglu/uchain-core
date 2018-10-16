@@ -35,7 +35,7 @@ public class PrivateKey {
             return new PrivateKey(Scalar.apply(data));
         } else if (data.getLength(data.getData()) == 33) {
             if (data.getData().get(data.getData().size() - 1) == 1) {
-                return new PrivateKey(Scalar.apply(new BinaryData(data.getData().subList(0, 33))));
+                return new PrivateKey(Scalar.apply(new BinaryData(data.getData().subList(0, 32))));
             }
         }
         throw new IllegalArgumentException("BinaryData must be initialized with a 32/33 bytes value");
@@ -70,7 +70,11 @@ public class PrivateKey {
     public String toWIF() {
         // always treat as compressed key, do NOT use uncompressed key
         //TODO return Wallet.privKeyToWIF(getScalar().toBin());
-        return "";
+        byte[] data = new byte[34];
+        data[0] = (byte)0x80;
+        data[33] = (byte) 0x01;
+        System.arraycopy(CryptoUtil.binaryData2array(scalar.toBin()), 0, data, 1, 32);
+        return Base58Check.encode(data);
     }
 
 //    @Override

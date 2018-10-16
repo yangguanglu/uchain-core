@@ -255,7 +255,6 @@ public class LevelDBBlockChain implements BlockChain{
     public Block produceBlockFinalize(PublicKey producer,PrivateKey privateKey,Long timeStamp){
         assert(!pendingTxs.isEmpty());
         ForkItem forkHead = forkBase.head();
-        System.out.println("aaaaaaaaaaaa="+forkHead.getBlock().height());
         UInt256 merkleRoot = MerkleTree.root(pendingTxs.stream().map(v -> v.id()).collect(Collectors.toList()));
         BlockHeader header = BlockHeader.build(
                 forkHead.getBlock().height() + 1, timeStamp, merkleRoot,

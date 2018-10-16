@@ -43,7 +43,10 @@ public class LevelDbStorage implements Storage<byte[], byte[]> {
             return value;
         }
     }
-
+    //batch is null
+    public boolean set(byte[] key, byte[] value) {
+        return set(key,value,null);
+    }
 	@Override
 	public boolean set(byte[] key, byte[] value,Batch batch) {
         Batch newBatch = null;
@@ -238,19 +241,24 @@ public class LevelDbStorage implements Storage<byte[], byte[]> {
 		return list;
 	}
 
-	public TwoTuple<byte[], byte[]> find(byte[] prefix){
+	public List<Entry<byte[], byte[]>> find(byte[] prefix){
+	    List<Entry<byte[], byte[]>> entryList = new ArrayList<>();
         DBIterator iterator = db.iterator();
-            iterator.seek(prefix);
-            ThreeTuple<Boolean, byte[], byte[]> threeTuple;
-            while (iterator.hasNext()) {
-                threeTuple = findFunc(prefix, iterator.peekNext());
-                if(threeTuple.first){
-                    iterator.next();
-                }
-                else return new TwoTuple(threeTuple.second, threeTuple.third);
+        iterator.seek(prefix);
+        while (iterator.hasNext()){
+            Entry<byte[], byte[]> entry = iterator.peekNext();
+            byte[] compareKeys = new byte[prefix.length];
+            System.arraycopy(entry.getKey(), 0,compareKeys,0, prefix.length );
+            if(entry.getKey().length < prefix.length || !Arrays.equals(prefix, compareKeys)){
+                break;
             }
-            return null;
-	}
+            else {
+                entryList.add(entry);
+                iterator.next();
+            }
+        }
+        return entryList;
+    }
 
 	private ThreeTuple<Boolean, byte[], byte[]> findFunc(byte[] prefix, Map.Entry<byte[], byte[]> nextEntry){
         byte[] compareKeys = new byte[nextEntry.getKey().length];

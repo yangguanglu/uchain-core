@@ -67,8 +67,6 @@ public class ApacheHttpClient {
     }
 
     public static String getWithUrl(String path, String params){
-        System.out.println("*******************");
-        System.out.println("path:" + path + "params:" + params);
         String response = "";
         try {
             URIBuilder uriBuilder = new URIBuilder(url + path);

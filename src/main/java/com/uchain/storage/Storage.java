@@ -27,7 +27,7 @@ public interface Storage<Key, Value> {
 
 	void close();
 
-	TwoTuple<byte[], byte[]> find(byte[] prefix);
+    List<Map.Entry<byte[], byte[]>> find(byte[] prefix);
 
     Batch batchWrite();
 

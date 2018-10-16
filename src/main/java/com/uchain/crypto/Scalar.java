@@ -22,7 +22,7 @@ public class Scalar {
 
     public static Scalar apply(BinaryData data){
         if (data.getLength(data.getData()) == 32){
-            return new Scalar(new BigInteger(1, CryptoUtil.listTobyte(data.getData())));
+            return new Scalar(new BigInteger(1, CryptoUtil.binaryData2array(data)));
         }
         throw new IllegalArgumentException("scalar must be initialized with a 32 bytes value");
 

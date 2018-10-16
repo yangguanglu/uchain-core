@@ -94,7 +94,6 @@ public class Node extends AbstractActor{
 	        			}
 	        		}
 	        	});
-                log.info("dddddddddddd="+newBlocks.size());
 	        	if(newBlocks.size() > 0) {
 	        		log.info("send GetDataMessage "+newBlocks);
                     peerHandlerManager.tell(new GetDataMessage(new InventoryPayload(InventoryType.Block, newBlocks)).pack(), getSelf());

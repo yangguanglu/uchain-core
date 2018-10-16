@@ -1,3 +1,9 @@
+import com.uchain.crypto.BinaryData;
+import com.uchain.crypto.Crypto;
+import com.uchain.crypto.*;
+import com.uchain.crypto.CryptoUtil;
+import lombok.val;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,17 +16,31 @@ public class CommandHandler {
         String httpResponse = "";
         try {
             if(command.contains("help")) return Help.help;
+            if(command.contains("newaddr")) return generateAddr();
             Command commandToSend = constructCommandToSend(command);
             String path = commandToSend.path;
             String body = DataProcessor.JsonMapperTo(commandToSend.commandSuffixes);
-            System.out.println("**************");
-            System.out.println(body);
             httpResponse = ApacheHttpClient.getWithUrl(path, body);
         }
         catch (IOException e){
             e.printStackTrace();
         }
         return httpResponse;
+    }
+
+    public String generateAddr(){
+
+        BinaryData privKeyBin = CryptoUtil.array2binaryData(Crypto.randomBytes(32));
+//
+//        BinaryData privKeyBin = CryptoUtil.fromHexString(commandSuffixes.get(0).getSuffixValue());
+//        Crypto.randomBytes(32)
+//
+        val privKey = PrivateKey.apply(privKeyBin);
+        System.out.println(privKey.publicKey().toAddress());
+        System.out.println(privKey.toWIF());
+//        println(s"Address: ${privKey.publicKey.toAddress}")
+//        println(s"Private key: ${privKey.toWIF}")
+        return "";
     }
 
     public String readResourceTxt(String file){
@@ -123,6 +143,7 @@ public class CommandHandler {
         supportedCommandList.add("quit");
         supportedCommandList.add("exit");
         supportedCommandList.add("help");
+        supportedCommandList.add("newaddr");
         return supportedCommandList;
     }
 

@@ -3,10 +3,8 @@ package com.uchain.core.producer;
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
-import com.uchain.common.Serializabler;
 import com.uchain.core.Block;
 import com.uchain.core.BlockChain;
-import com.uchain.core.LevelDBBlockChain;
 import com.uchain.core.Transaction;
 import com.uchain.core.producer.ProduceStateImpl.*;
 import com.uchain.crypto.*;
@@ -40,8 +38,8 @@ public class Producer extends AbstractActor {
 		return Props.create(Producer.class, settings, chain, peerManager);
 	}
 
-	private Map<UInt256, Transaction> txPool = new HashMap<UInt256, Transaction>();
-	private boolean canProduce = false;
+	private Map<UInt256, Transaction> txPool = new HashMap();
+	private boolean canProduce = true;
 
 	@Override
 	public void preStart() {
@@ -84,7 +82,6 @@ public class Producer extends AbstractActor {
             Witness witness = getWitness(nextProduceTime(now, next));
             if (!(witness.getPrivkey()==null)) {
                 log.info("startProduceBlock");
-                log.info(String.valueOf(((LevelDBBlockChain)chain).getForkBase().head().getBlock().height()));
                 chain.startProduceBlock(PublicKey.apply(new BinaryData(witness.getPubkey())));
                 txPool.forEach((k,v) -> chain.produceBlockAddTransaction(v));
                 txPool.clear();
