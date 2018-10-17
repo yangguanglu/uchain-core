@@ -209,20 +209,20 @@ public class LevelDBStorageTest {
 			}
 		}
 
-//		for (int j=0;j<=1;j++) {
-//			int i = 0;
-//			val seq = seqArr.get(j);
-//			TwoTuple<byte[], byte[]> twoTuple = storage.find(prefixes.get(j).getBytes()/*, (k, v) => {
-//				assert((new String(k), new String(v)).equals(seq(i)))
-//				i += 1
-//			}*/);
-//			for(Map.Entry<String,String> entry:seq.entrySet()){
-//				assert(new String(twoTuple.first).equals(entry.getKey()));
-//				assert(new String(twoTuple.second).equals(entry.getValue()));
-//				i++;
-//			}
-//			assert(i == 5);
-//		}
+		for (int j=0;j<=1;j++) {
+			int i = 0;
+			val seq = seqArr.get(j);
+			List<Map.Entry<byte[], byte[]>> twoTuple = storage.find(prefixes.get(j).getBytes()/*, (k, v) => {
+				assert((new String(k), new String(v)).equals(seq(i)))
+				i += 1
+			}*/);
+			for(Map.Entry<String,String> entry:seq.entrySet()){
+				assert(new String(twoTuple.get(i).getKey()).equals(entry.getKey()));
+				assert(new String(twoTuple.get(i).getValue()).equals(entry.getValue()));
+				i++;
+			}
+			assert(i == 5);
+		}
 	}
 
 	@Test

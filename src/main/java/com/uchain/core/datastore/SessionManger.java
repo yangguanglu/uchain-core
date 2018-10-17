@@ -15,6 +15,7 @@ import com.uchain.storage.Batch;
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.WriteBatch;
+import org.iq80.leveldb.impl.WriteBatchImpl;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -146,7 +147,7 @@ public class SessionManger {
 
     public void commit(){
         RollSession session = null;
-        if(sessions.size()!=0) {
+        if(sessions.size()>0) {
             session = sessions.get(0);
         }
         if(session == null) return;
@@ -172,9 +173,9 @@ public class SessionManger {
         RollSession session1 = sessions.get(sessions.size() - 1 );
         WriteBatch batch = db.createWriteBatch();
         try {
-            session1.rollBack(batch);
+
             batch.put(prefix,BigInteger.valueOf(new Long(_revision - 1)).toByteArray());
-            db.write(batch);
+            session1.rollBack(batch);
             sessions.remove(session1);
             _revision = _revision -1;
         }

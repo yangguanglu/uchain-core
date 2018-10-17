@@ -14,6 +14,7 @@ import lombok.val;
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.WriteBatch;
 
+import java.io.IOException;
 import java.math.BigInteger;
 
 public class RollSession extends Session{
@@ -67,14 +68,18 @@ public class RollSession extends Session{
         }
     }*/
 
-    public void rollBack(WriteBatch batch){
+    public void rollBack(WriteBatch onRollBack) throws IOException {
         assert(!closed);
+        val batch = db.createWriteBatch();
+        try {
             item.getInsert().forEach((k, v) -> batch.delete(k.getBytes()));
             item.getUpdate().forEach((k, v) -> batch.put(k.getBytes(), v));
             item.getDelete().forEach((k, v) -> batch.put(k.getBytes(), v));
             batch.delete(sessionId);
-            //待驗證
-            //onRollBack(batch) 这步未翻译
+            db.write(batch);
+        }finally {
+            batch.close();
+        }
     }
     @Override
     public Batch onSet(byte[] key, byte[] v, Batch batch){
