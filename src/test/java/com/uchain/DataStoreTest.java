@@ -57,13 +57,11 @@ public class DataStoreTest {
 
     private static void deleteDir(String dir){
         try {
-            //递归删除
             File scFileDir = new File(dir);
             File TrxFiles[] = scFileDir.listFiles();
             for(File curFile:TrxFiles ){
                 curFile.delete();
             }
-            //删除空目录
             scFileDir.delete();
         } catch (Exception e){
             e.printStackTrace();
@@ -91,17 +89,13 @@ public class DataStoreTest {
                 new UInt256Key(), new BlockHeaderValue());
             BlockHeader blk1 = createBlockHeader();
             assert (blk1 != null);
-            System.out.println("blk1===================="+blk1.id());
             db.newSession();
             store.set(blk1.id(), blk1,null);
             assert(store.get(blk1.id()).equals(blk1));
-            System.out.println("blk31===================="+store.get(blk1.id()));
             db.rollBack();
-            System.out.println("blk31===================="+store.get(blk1.id()));
             assert(store.get(blk1.id()) == null);
             BlockHeader blk2 = createBlockHeader();
-            System.out.println("blk2===================="+blk2.id());
-            db.newSession();
+//            db.newSession();
             store.set(blk2.id(), blk2,null);
             db.commit();
             assert(store.get(blk2.id()).equals(blk2));
@@ -109,14 +103,11 @@ public class DataStoreTest {
             assert(store.get(blk2.id()).equals(blk2));
             db.newSession();
             BlockHeader blk3 = createBlockHeader();
-            System.out.println("blk3===================="+blk3.id());
             store.set(blk3.id(), blk3,null);
-            System.out.println("blk3===================="+store.get(blk3.id()));
             assert(store.get(blk3.id()).equals(blk3));
             db.rollBack();
             assert(store.get(blk2.id()).equals(blk2));
-//            System.out.println("blk3===================="+store.get(blk3.id()));
-//            assert(store.get(blk3.id()) == null);
+            assert(store.get(blk3.id()) == null);
         }catch (Exception e){
             e.printStackTrace();
         }

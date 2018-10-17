@@ -10,6 +10,9 @@ import com.uchain.core.producer.ProduceStateImpl.*;
 import com.uchain.crypto.*;
 import com.uchain.main.ConsensusSettings;
 import com.uchain.main.Witness;
+import com.uchain.network.message.BlockMessageImpl;
+import com.uchain.network.message.InventoryPayload;
+import com.uchain.network.message.InventoryType;
 import lombok.val;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +22,9 @@ import java.io.DataInputStream;
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Producer extends AbstractActor {
@@ -39,7 +44,7 @@ public class Producer extends AbstractActor {
 	}
 
 	private Map<UInt256, Transaction> txPool = new HashMap();
-	private boolean canProduce = true;
+	private boolean canProduce = false;
 
 	@Override
 	public void preStart() {
@@ -77,16 +82,7 @@ public class Producer extends AbstractActor {
 	  */
 	private ProduceState tryProduce(Long now) {
 		Long next = nextBlockTime(1);
-        if (next - now <= settings.getProduceInterval()
-                && chain.isProducingBlock() == false) {
-            Witness witness = getWitness(nextProduceTime(now, next));
-            if (!(witness.getPrivkey()==null)) {
-                log.info("startProduceBlock");
-                chain.startProduceBlock(PublicKey.apply(new BinaryData(witness.getPubkey())));
-                txPool.forEach((k,v) -> chain.produceBlockAddTransaction(v));
-                txPool.clear();
-            }
-        }
+		tryStartProduce(now);
 		if (now + settings.getAcceptableTimeError() < next) {
 			return new NotYet(next,now);
 		}else {
@@ -104,6 +100,16 @@ public class Producer extends AbstractActor {
                 return new Success(block, witness.getName(), now);
             }
 
+		}
+	}
+
+	private void tryStartProduce(Long now){
+		if (chain.isProducingBlock() == false) {
+			Witness witness = getWitness(nextProduceTime(now, nextBlockTime(1)));
+			if (!(witness.getPrivkey()==null)) {
+				log.info("startProduceBlock");
+				chain.startProduceBlock(PublicKey.apply(new BinaryData(witness.getPubkey())));
+			}
 		}
 	}
 
@@ -194,13 +200,13 @@ public class Producer extends AbstractActor {
 			DataInputStream is = new DataInputStream(new ByteArrayInputStream(CryptoUtil.binaryData2array(rawTx)));
 			val tx = Transaction.deserialize(is);
 			if(tx.verifySignature()){
-				if(chain.isProducingBlock()){
-					chain.produceBlockAddTransaction(tx);
+				List<UInt256> txList = new ArrayList<>();
+				txList.add(tx.id());
+				peerManager.tell(new BlockMessageImpl.InventoryMessage(new InventoryPayload(InventoryType.Tx ,txList)).pack(), getSelf());
+				if(chain.addTransaction(tx)){
+					getSender().tell(true, getSender());
 				}
-				else{
-					txPool.put(tx.id(), tx);
-				}
-				getSender().tell(true, getSender());
+				else getSender().tell(true, getSender());
 			}
 			else getSender().tell(false, getSender());
 		}).match(Boolean.class, msg ->{

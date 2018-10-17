@@ -144,6 +144,7 @@ public class CommandHandler {
         supportedCommandList.add("exit");
         supportedCommandList.add("help");
         supportedCommandList.add("newaddr");
+        supportedCommandList.add("getaccount");
         return supportedCommandList;
     }
 
@@ -154,12 +155,15 @@ class Help{
     static String help = "APEX NETWORK\n" +
             "\n" +
             "name            parameter                      description\n" +
+            "getaccount      [-address]                     get account\n" +
             "getblocks       []                             list block\n" +
-            "sendrawtransaction [-privkey,-address,-assetId,-amount,-nonce] transfer money\n" +
+            "sendrawtransaction [-privkey,-address,-assetId,-amount,-nonce] send raw transaction\n" +
+            "newaddr         []                             create new address\n" +
             "getblock        [-id]                          get block by id\n" +
             "                [-h]                           get block by height\n" +
             "gettx           [-id]                          get transaction\n" +
             "importprivkey   [-key]                         import private key\n" +
+            "walletinfo      []                             list wallet info\n" +
             "getblockcount   []                             get block count\n" +
-            "produceblock    []                             produce block";
+            "send            [-to,-amount]                  transfer money";
 }

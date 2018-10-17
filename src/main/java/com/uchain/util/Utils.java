@@ -21,7 +21,7 @@ public class Utils {
     public static int uint8(InputStream input) throws IOException {
         return input.read();
     }
-//scala 版中返回可变类型值，或许是void
+
    public static void writeUInt8(int input, OutputStream out) throws IOException{
         out.write(input & 0xff);
    }

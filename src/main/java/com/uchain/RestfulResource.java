@@ -2,11 +2,18 @@ package com.uchain;
 
 import akka.actor.ActorRef;
 import akka.pattern.Patterns;
+import com.uchain.common.Serializabler;
+import com.uchain.core.Account;
+import com.uchain.core.Block;
 import com.uchain.core.LevelDBBlockChain;
 import com.uchain.core.producer.SendRawTransaction;
 import com.uchain.crypto.BinaryData;
 import com.uchain.crypto.CryptoUtil;
+import com.uchain.crypto.PublicKeyHash;
+import com.uchain.crypto.UInt160;
+import com.uchain.network.message.BlockMessageImpl;
 import lombok.val;
+import scala.Serializable;
 import scala.concurrent.Await;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
@@ -36,10 +43,8 @@ public class RestfulResource {
     @Produces(MediaType.TEXT_PLAIN)
     public String getBlocks(@PathParam("param") String requestParam, @QueryParam("query") String query,
                                         @Context Request request, @Context UriInfo uriInfo, @Context HttpHeaders httpHeaders){
-        System.out.println("**************");
         val blocks = CommandReceiverService.getBlocks(query, nodeActor, producerActor, chain);
         System.out.println(blocks);
-        System.out.println("**************");
         String responseStr = requestParam + "[" + blocks + "]";
         return responseStr;
     }
@@ -50,18 +55,44 @@ public class RestfulResource {
     @Produces(MediaType.TEXT_PLAIN)
     public String getBlock(@PathParam("param") String requestParam, @QueryParam("query") String query,
                                   @Context Request request, @Context UriInfo uriInfo, @Context HttpHeaders httpHeaders){
-        String responseStr = CommandReceiverService.getBlock(query, nodeActor, producerActor);
-        return responseStr;
+        Block block = CommandReceiverService.getBlock(query, nodeActor, producerActor, chain);
+        if(block == null) return "no such block";
+        try {
+            String blockInfo = Serializabler.JsonMapperTo(block);
+            return blockInfo;
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            return "";
+        }
+    }
+
+    @GET
+    @Path("{param:getaccount}")
+    @Consumes({MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON})
+    @Produces(MediaType.TEXT_PLAIN)
+    public String getAccount(@PathParam("param") String requestParam, @QueryParam("query") String query,
+                           @Context Request request, @Context UriInfo uriInfo, @Context HttpHeaders httpHeaders){
+        String accountAddress = CommandReceiverService.getAccount(query, nodeActor, producerActor);
+        UInt160 address = PublicKeyHash.fromAddress(accountAddress);
+        Future f = Patterns.ask(nodeActor, new BlockMessageImpl.GetAccountMessage(address), 1000);
+        try {
+            Account re = (Account) Await.result(f, Duration.create(6, TimeUnit.SECONDS));
+            return Serializabler.JsonMapperTo(re);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            return "false";
+        }
     }
 
     @GET
     @Path("{param:getblockcount}")
     @Consumes({MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON})
     @Produces(MediaType.TEXT_PLAIN)
-    public String getBlockCount(@PathParam("param") String requestParam, @QueryParam("query") String heigth,
+    public int getBlockCount(@PathParam("param") String requestParam, @QueryParam("query") String heigth,
                            @Context Request request, @Context UriInfo uriInfo, @Context HttpHeaders httpHeaders){
-        String responseStr = requestParam + "[" + heigth + "]";
-        return responseStr;
+        return chain.getHeight();
     }
 
     @POST

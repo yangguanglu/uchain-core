@@ -2,6 +2,8 @@ package com.uchain.core;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.uchain.common.Serializable;
+import com.uchain.common.Serializabler;
 import com.uchain.core.consensus.ForkBase;
 import com.uchain.core.consensus.ForkItem;
 import com.uchain.core.consensus.ThreeTuple;
@@ -49,7 +51,7 @@ public class LevelDBBlockChain implements BlockChain{
     private BlockBase blockBase;
     private DataBase dataBase;
     private List<Transaction> pendingTxs = Lists.newArrayList();
-    private List<Transaction> unapplyTxs = Lists.newArrayList();
+    private Map<UInt256, Transaction> unapplyTxs = new HashMap<>();
 
     LevelDBBlockChain(Settings settings){
     	this.settings = settings;
@@ -232,6 +234,31 @@ public class LevelDBBlockChain implements BlockChain{
         assert(applied);
         pendingTxs.add(minerTx);
 
+        unapplyTxs.values().forEach(transaction -> {
+            addTransaction(transaction);
+        });
+
+        pendingTxs.forEach(pendingTx -> {
+            unapplyTxs.remove(pendingTx.id());
+        });
+    }
+
+    @Override
+    public Boolean addTransaction(Transaction tx){
+        if(isProducingBlock()){
+            System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+            if(applyTransaction(tx)){
+                pendingTxs.add(tx);
+                return true;
+            }
+            else return false;
+        }
+        else {
+            if(!unapplyTxs.containsKey(tx.id())){
+                unapplyTxs.put(tx.id(), tx);
+            }
+            return true;
+        }
     }
 
     @Override
@@ -259,7 +286,8 @@ public class LevelDBBlockChain implements BlockChain{
         BlockHeader header = BlockHeader.build(
                 forkHead.getBlock().height() + 1, timeStamp, merkleRoot,
                 forkHead.getBlock().id(), producer, privateKey);
-        Block block = Block.build(header, pendingTxs);
+        List<Transaction> transactionList = new ArrayList(pendingTxs);
+        Block block = Block.build(header, transactionList);
         pendingTxs.clear();
         if (tryInsertBlock(block, false)) {
             return block;
@@ -274,7 +302,7 @@ public class LevelDBBlockChain implements BlockChain{
         boolean inserted = false;
         if (!pendingTxs.isEmpty()) {
             pendingTxs.forEach(tx ->{
-                unapplyTxs.add(tx);
+                unapplyTxs.put(tx.id(), tx);
             });
             pendingTxs.clear();
             try {
@@ -307,6 +335,11 @@ public class LevelDBBlockChain implements BlockChain{
             confirmedOrSwitch(threeTuple);
             inserted = true;
         }
+        if(inserted){
+            block.getTransactions().forEach(tx -> {
+                unapplyTxs.remove(tx.id());
+            });
+        }
         return inserted;
     }
 
@@ -328,6 +361,7 @@ public class LevelDBBlockChain implements BlockChain{
 
 
     private Boolean applyTransaction(Transaction tx){
+        boolean txValid = true;
         Account fromAccount;
         Map<UInt256, Fixed8> balances = Maps.newHashMap();
         if(dataBase.getAccount(tx.fromPubKeyHash())!=null){
@@ -341,36 +375,52 @@ public class LevelDBBlockChain implements BlockChain{
         }else {
             toAccount = new Account(true, "", balances, 0L,0x01,null);
         }
-        Map<UInt256, Fixed8> fromBalance = updateBalancesAccount(fromAccount.getBalances(),tx,"mus");
-        Map<UInt256, Fixed8> toBalance = updateBalancesAccount(toAccount.getBalances(),tx,"add");
-        dataBase.setAccount(tx.fromPubKeyHash(), new Account(true, fromAccount.getName(), fromBalance, fromAccount.getNextNonce() + 1,0x01,null),
-                tx.getToPubKeyHash(), new Account(true, toAccount.getName(), toBalance, toAccount.getNextNonce(),0x01,null));
 
-        return true;
+        if(tx.getTxType() == TransactionType.Miner){}
+        else {
+            if(!fromAccount.getBalances().containsKey(tx.getAssetId())) txValid = false;
+            val txAmount = tx.getAmount();
+            val fromBalances = fromAccount.getBalances();
+            val fromAmount = fromBalances.get(tx.getAssetId());
+            System.out.println("1111111111111111111");
+            System.out.println(txAmount.getValue());
+            System.out.println("2222222222222222222");
+            System.out.println(fromAmount.getValue());
+            System.out.println("3333333333333333333");
+            if(txAmount.greater(fromAmount)) txValid = false;
+            if(tx.getNonce() != fromAccount.getNextNonce()) txValid = false;
+        }
+
+        if(txValid){
+            Map<UInt256, Fixed8> fromBalance = updateBalancesAccount(fromAccount.getBalances(),tx,"mus");
+            Map<UInt256, Fixed8> toBalance = updateBalancesAccount(toAccount.getBalances(),tx,"add");
+            try{
+
+
+                System.out.println("fromBalance" + Serializabler.JsonMapperTo(fromBalance));
+                System.out.println("toBalance" + Serializabler.JsonMapperTo(toBalance));
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
+            dataBase.setAccount(tx.fromPubKeyHash(), new Account(true, fromAccount.getName(), fromBalance, fromAccount.getNextNonce() + 1,0x01,null),
+                    tx.getToPubKeyHash(), new Account(true, toAccount.getName(), toBalance, toAccount.getNextNonce(),0x01,null));
+        }
+
+        return txValid;
     }
 
 
     private Map<UInt256, Fixed8> updateBalancesAccount(Map<UInt256, Fixed8> balancesInAccount,
                                                        Transaction tx,String flag) {
-        Map<UInt256, Fixed8> updateBalances = new HashMap<>();
-        balancesInAccount.forEach((assetId, balance) -> {
-            if (tx.getAssetId().equals(assetId)) {
-                Fixed8 balanceTemp;
-                if("add".equals(flag)){
-                    balanceTemp = balance.add(tx.getAmount());
-                    updateBalances.put(assetId, balanceTemp);
-                }else{
-                    balanceTemp = balance.mus(tx.getAmount());
-                    if(balanceTemp.getValue()>0L){
-                        updateBalances.put(assetId, balanceTemp);
-                    }
-                }
+        Fixed8 amount = tx.getAmount();
+        if(flag.equals("mus")){
+            amount = Fixed8.Zero.mus(tx.getAmount());
+        }
+        val balance = balancesInAccount.containsKey(tx.getAssetId()) ? balancesInAccount.get(tx.getAssetId()).add(amount) :amount;
+        balancesInAccount.put(tx.getAssetId(), balance);
 
-            } else
-                updateBalances.put(assetId, balance);
-        });
-
-        return updateBalances;
+        return balancesInAccount;
     }
 
 

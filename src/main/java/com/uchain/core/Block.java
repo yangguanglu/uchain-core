@@ -2,6 +2,7 @@ package com.uchain.core;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.uchain.common.Serializabler;
 import com.uchain.crypto.UInt160;
 import com.uchain.crypto.UInt256;
@@ -25,16 +26,16 @@ public class Block implements Identifier<UInt160>{
 
     private List<Transaction> transactions;
 
-    private Map<UInt256, Transaction> txMp = new HashMap<>();
+    private UInt256 id;
+
 
     public Block (BlockHeader header, List<Transaction> transactions){
         this.header = header;
         this.transactions = transactions;
-        transactions.forEach(transaction -> {
-            txMp.put(transaction.id(), transaction);
-        });
+        this.id = id();
     }
 
+    @JsonInclude
     public UInt256 id(){
         return header.id();
     }
@@ -49,10 +50,6 @@ public class Block implements Identifier<UInt160>{
     
     public long timeStamp(){
         return header.getTimeStamp();
-    }
-
-    public Transaction getTransaction(UInt256 id){
-        return txMp.get(id);
     }
 
     public Transaction getTransaction(int index){

@@ -12,6 +12,7 @@ import com.uchain.network.message.BlockMessageImpl.*;
 import com.uchain.network.message.*;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.val;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -125,6 +126,11 @@ public class Node extends AbstractActor{
                     peerHandlerManager.tell(new BlocksMessage(new BlocksPayload(blocks)).pack(),getSelf());
                 }
 	        }
+		}).match(GetAccountMessage.class, msg -> {
+			log.info("received GetAccountMessage");
+			val address = msg.getAccountAddress();
+			val account = chain.getAccount(address);
+			getSender().tell(account, getSender());
 		}).build();
 	}
 }

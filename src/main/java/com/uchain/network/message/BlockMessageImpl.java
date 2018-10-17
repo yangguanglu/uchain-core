@@ -2,6 +2,8 @@ package com.uchain.network.message;
 
 import com.uchain.common.Serializabler;
 import com.uchain.core.Block;
+import com.uchain.crypto.CryptoUtil;
+import com.uchain.crypto.UInt160;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -108,6 +110,23 @@ public class BlockMessageImpl {
 		@Override
 		public MessagePack pack() {
 			return new MessagePack(messageType, Serializabler.toBytes(inv), null);
+		}
+	}
+
+	@Getter
+	@Setter
+	public static class GetAccountMessage implements PackMessage {
+		private MessageType messageType;
+		private UInt160 accountAddress;
+
+		public GetAccountMessage(UInt160 accountAddress) {
+			this.messageType = MessageType.GetAccount;
+			this.accountAddress = accountAddress;
+		}
+
+		@Override
+		public MessagePack pack() {
+			return new MessagePack(messageType,Serializabler.toBytes(accountAddress), null);
 		}
 	}
 }

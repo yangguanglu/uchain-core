@@ -39,6 +39,8 @@ public interface BlockChain extends Iterable<Block>{
 
     Boolean isProducingBlock();
 
+    Boolean addTransaction(Transaction tx);
+
     Boolean tryInsertBlock(Block block,Boolean doApply);
 
 //    Transaction getTransaction(UInt256 id);

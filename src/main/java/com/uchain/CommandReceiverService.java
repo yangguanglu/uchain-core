@@ -31,30 +31,15 @@ import java.util.Map;
 
 public class CommandReceiverService {
     static public String getBlocks(String query, ActorRef nodeActor, ActorRef producerActor, LevelDBBlockChain chain){
-//        try {
         BlockBase blockBase = chain.getBlockBase();
         List<Map.Entry<byte[], byte[]>> entryList= blockBase.getBlockStore().getDb().scan();
-        int forkBaseNum = entryList.size();
-        System.out.println(forkBaseNum);
-
         val blockNum = chain.getHeight();
-
-//        val blocksNumConfirm = chain.getBlockBase();
-
         val blocks = new ArrayList<Block>(blockNum);
         try {
-            JSONArray jsonArray = new JSONArray();
             for(int i=blockNum-1; i> 0; i--){
                 blocks.add(chain.getBlock(i));
             }
 
-//            for(Block block : blocks){
-//                JSONObject jsonObject = new JSONObject();
-//                jsonObject.put()
-//            }
-
-//            String jsonString = JSON.toJSONString(blocks, SerializerFeature.DisableCircularReferenceDetect);
-//            return jsonString;
             return Serializabler.JsonMapperTo(blocks);
         }
         catch (Throwable e){
@@ -62,29 +47,34 @@ public class CommandReceiverService {
             return "";
         }
 
-//        val blocks = new ArrayList<Block>(blockNum);
-////            return Serializabler.JsonMapperTo(blocks);
-//            return String.valueOf(blockNum);
-//        }
-//        catch (IOException e){
-//            e.printStackTrace();
-//            return "";
-//        }
-
     }
 
-    public static String getBlock(String query, ActorRef nodeActor, ActorRef producerActor){
+    public static Block getBlock(String query, ActorRef nodeActor, ActorRef producerActor, LevelDBBlockChain chain){
 //        try {
             ArrayList<CommandSuffix> commandSuffixes = parseCommandSuffixes(query);
             if(commandSuffixes.size() ==1){
                 val suffixParam = commandSuffixes.get(0).getSuffixParam();
                 val suffixValue = commandSuffixes.get(0).getSuffixValue();
-                if(suffixParam.matches("(?:-h|-height)")){
-                    int heightValue = Integer.valueOf(suffixValue);
-                    return "";
-                }
+                if(suffixParam.contains("h")) return chain.getBlock(Integer.valueOf(suffixValue));
+                if(suffixParam.contains("id")) return chain.getBlock(UInt256.parse(suffixValue));
             }
-            return "";
+            return null;
+//        }
+//        catch (IOException e){
+//            e.printStackTrace();
+//            return "";
+//        }
+    }
+
+    public static String getAccount(String query, ActorRef nodeActor, ActorRef producerActor){
+//        try {
+        ArrayList<CommandSuffix> commandSuffixes = parseCommandSuffixes(query);
+        if(commandSuffixes.size() ==1){
+            val suffixParam = commandSuffixes.get(0).getSuffixParam();
+            val suffixValue = commandSuffixes.get(0).getSuffixValue();
+            return suffixValue;
+        }
+        return "";
 //        }
 //        catch (IOException e){
 //            e.printStackTrace();
@@ -94,7 +84,6 @@ public class CommandReceiverService {
 
     static public BinaryData sendRawTransaction(String query, ActorRef nodeActor, ActorRef producerActor, LevelDBBlockChain chain){
 
-        System.out.println("!!!!!!!!!!!!!!!!!!!!");
         ArrayList<CommandSuffix> commandSuffixes = parseCommandSuffixes(query);
 
         BinaryData privKeyBin = CryptoUtil.fromHexString(commandSuffixes.get(0).getSuffixValue());
@@ -127,7 +116,6 @@ public class CommandReceiverService {
         List<Byte> txList = Arrays.asList(txBYTES);
         val txRawData = new BinaryData(txList);
         val rawTx = "{\"rawTx\":\""  + CryptoUtil.toHexString(txRawData)  + "\"}";
-        System.out.println("!!!!!!!!!!!!!!!!!!!!::::" + rawTx);
         return txRawData;
 //        val blocks = new ArrayList<Block>(blockNum);
 ////            return Serializabler.JsonMapperTo(blocks);

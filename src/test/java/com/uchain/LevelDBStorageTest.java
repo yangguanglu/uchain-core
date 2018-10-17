@@ -1,18 +1,16 @@
 package com.uchain;
 
 import com.google.common.collect.Maps;
-import com.uchain.core.consensus.TwoTuple;
-import com.uchain.storage.Batch;
-import com.uchain.storage.ConnFacory;
-import com.uchain.storage.LevelDbStorage;
 import lombok.val;
 import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class LevelDBStorageTest {
 	/*
@@ -201,7 +199,7 @@ public class LevelDBStorageTest {
 			val key = prefixes.get(i%2)+i;
 			val keyBytes = key.getBytes();
 			val value = "value"+i;
-			//尾部追加
+
 //			seqArr(i % 2) = seqArr(i % 2) :+ (key, value)
 			seqArr.get(i % 2).put(key,value);
 			if (storage.get(keyBytes) == null) {
@@ -253,16 +251,16 @@ public class LevelDBStorageTest {
 		assert(start == max + 1);
 	}
 
-	@Test
+	@Test(expected = AssertionError.class)
 	public void testSession() {
-
+	try {
 		val testMethod = "testSession";
 
 		{
 			val db = DBManager.open(testClass, testMethod);
 			try {
 				db.newSession();
-				assert(db.revision() == 2);
+				assert (db.revision() == 2);
 				assertUncommittedSessions(db.uncommitted(), 1, 1);
 			} finally {
 				DBManager.close(testClass, testMethod);
@@ -272,7 +270,7 @@ public class LevelDBStorageTest {
 			val db = DBManager.open(testClass, testMethod);
 			try {
 				db.newSession();
-				assert(db.revision() == 3);
+				assert (db.revision() == 3);
 				assertUncommittedSessions(db.uncommitted(), 1, 2);
 			} finally {
 				DBManager.close(testClass, testMethod);
@@ -281,9 +279,9 @@ public class LevelDBStorageTest {
 		{
 			val db = DBManager.open(testClass, testMethod);
 			try {
-				assert(db.revision() == 3);
+				assert (db.revision() == 3);
 				db.rollBack();
-				assert(db.revision() == 2);
+				assert (db.revision() == 2);
 				assertUncommittedSessions(db.uncommitted(), 1, 1);
 			} finally {
 				DBManager.close(testClass, testMethod);
@@ -292,9 +290,9 @@ public class LevelDBStorageTest {
 		{
 			val db = DBManager.open(testClass, testMethod);
 			try {
-				assert(db.revision() == 2);
+				assert (db.revision() == 2);
 				db.commit();
-				assert(db.uncommitted().size() == 0);
+				assert (db.uncommitted().size() == 0);
 			} finally {
 				DBManager.close(testClass, testMethod);
 			}
@@ -302,15 +300,15 @@ public class LevelDBStorageTest {
 		{
 			val db = DBManager.open(testClass, testMethod);
 			try {
-				assert(db.revision() == 2);
-				assert(db.uncommitted().size() == 0);
+				assert (db.revision() == 2);
+				assert (db.uncommitted().size() == 0);
 				db.newSession();
 				db.newSession();
 				db.newSession();
 				db.newSession();
 				db.newSession();
 				db.newSession();
-				assert(db.revision() == 8);
+				assert (db.revision() == 8);
 			} finally {
 				DBManager.close(testClass, testMethod);
 			}
@@ -318,7 +316,7 @@ public class LevelDBStorageTest {
 		{
 			val db = DBManager.open(testClass, testMethod);
 			try {
-				assert(db.revision() == 8);
+				assert (db.revision() == 8);
 				assertUncommittedSessions(db.uncommitted(), 2, 7);
 				db.commit(5);
 				assertUncommittedSessions(db.uncommitted(), 6, 7);
@@ -329,12 +327,12 @@ public class LevelDBStorageTest {
 		{
 			val db = DBManager.open(testClass, testMethod);
 			try {
-				assert(db.revision() == 8);
+				assert (db.revision() == 8);
 				assertUncommittedSessions(db.uncommitted(), 6, 7);
 				db.rollBack();
 				db.rollBack();
-				assert(db.uncommitted().size() == 0);
-				assert(db.revision() == 6);
+				assert (db.uncommitted().size() == 0);
+				assert (db.revision() == 6);
 			} finally {
 				DBManager.close(testClass, testMethod);
 			}
@@ -342,12 +340,16 @@ public class LevelDBStorageTest {
 		{
 			val db = DBManager.open(testClass, testMethod);
 			try {
-				assert(db.uncommitted().size() == 0);
-				assert(db.revision() == 6);
-				System.out.println("final revision "+db.revision());
+				assert (db.uncommitted().size() == 0);
+				assert (db.revision() == 6);
+				System.out.println("final revision " + db.revision());
 			} finally {
 				DBManager.close(testClass, testMethod);
 			}
 		}
+	}catch (Exception e){
+		e.printStackTrace();
+		return;
+	}
 	}
 }

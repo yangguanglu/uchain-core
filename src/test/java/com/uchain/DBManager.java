@@ -56,10 +56,10 @@ public class DBManager {
 
     public static LevelDbStorage open(String testClass, String dir) {
         if (!dbManagers.containsKey(testClass)) {
-            DBManager dbMgr = new DBManager(dir);
+            DBManager dbMgr = new DBManager(testClass);
             dbManagers.put(testClass, dbMgr);
         }
-        return dbManagers.get(testClass).openDB(dir);
+        return dbManagers.get(testClass).openDB(testClass+'/'+dir);
     }
 
     public static void close(String testClass, String dir ) {

@@ -19,12 +19,17 @@ import com.uchain.crypto.UInt256;
 import com.uchain.main.DataBaseSettings;
 import com.uchain.storage.Batch;
 import com.uchain.storage.LevelDbStorage;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.val;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Map;
 
+@Getter
+@Setter
 public class DataBase {
 
     private static final Logger log = LoggerFactory.getLogger(DataBase.class);
@@ -63,7 +68,9 @@ public class DataBase {
         try {
             Batch batch = db.batchWrite();
             accountStore.set(fromUInt160,fromAccount,batch);
+
             accountStore.set(toUInt160,toAccount, batch);
+
             return db.applyBatch(batch);
         }catch (Exception e){
             log.error("SetAccount Failed!",e);

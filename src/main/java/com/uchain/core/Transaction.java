@@ -33,6 +33,7 @@ public class Transaction implements Identifier<UInt256> {
 
 	@JsonIgnore
 	private PublicKey from; // from
+	@JsonIgnore
 	private UInt160 toPubKeyHash; // to
 	private String toName; //  发送交易者的账户
 	private Fixed8 amount; //  发送金额
@@ -43,11 +44,16 @@ public class Transaction implements Identifier<UInt256> {
 	private int version = 0x01;
 	private UInt256 id = null;
 
+	private String fromAddress;
+	private String toAddress;
+
 	public Transaction(TransactionType txType, PublicKey from, UInt160 toPubKeyHash, String toName, Fixed8 amount,
 			UInt256 assetId, Long nonce, BinaryData data, BinaryData signature, int version, UInt256 id) {
 		this.txType = txType;
 		this.from = from;
 		this.toPubKeyHash = toPubKeyHash;
+		this.fromAddress = fromAddress();
+		this.toAddress = toAddress();
 		this.toName = toName;
 		this.amount = amount;
 		this.assetId = assetId;
