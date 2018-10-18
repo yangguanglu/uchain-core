@@ -33,6 +33,10 @@ public class Account implements Identifier<UInt160> {
 		this.id = id;
 	}
 
+	public Account(){
+
+	}
+
 	public Fixed8 getBalance(UInt256 assetID) {
 		return balances.getOrDefault(assetID, Fixed8.Zero);
 	}

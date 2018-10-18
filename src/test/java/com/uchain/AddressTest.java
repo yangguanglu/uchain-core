@@ -28,7 +28,7 @@ public class AddressTest {
         //20 bytes data
         val address3 = PublicKeyHash.toAddress(CryptoUtil.binaryData2array(new BinaryData("ffffffffffffffffffffffffffffffffffffffff")));
 
-        var privKey = PrivateKey.apply(new BinaryData("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725"),false);//32 bytes or 33
+        var privKey = PrivateKey.apply(new BinaryData("5dfee6af4775e9635c67e1cea1ed617efb6d22ca85abfa97951771d47934aaa0"),false);//32 bytes or 33
         var pubKey = privKey.publicKey();
         var pubKeyHash = pubKey.pubKeyHash().getData();  // f54a5851e9372b87810a8e60cdd2e7cfd80b6e31
         val address4 = PublicKeyHash.toAddress(pubKeyHash);

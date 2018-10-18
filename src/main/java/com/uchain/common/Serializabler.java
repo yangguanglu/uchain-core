@@ -18,6 +18,7 @@ public class Serializabler {
 	static{
 		mapper = new ObjectMapper();
 		mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+		mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
 	}
 
 	public static String  JsonMapperTo(Object object) throws IOException{

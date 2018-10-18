@@ -3,7 +3,7 @@ import java.util.Scanner;
 public class APP {
     public static void main(String[] args){
 
-
+        Wallet wallet = WalletLoader.load();
         System.out.println("Welcome to CLI, type \"help\" for command list:");
         while (true) {
             Scanner scanner = new Scanner(System.in);
@@ -15,7 +15,7 @@ public class APP {
             int checkResult = new CommandHandler().checkCommand(command);
             switch (checkResult){
                 case 200:{
-                    String result = new CommandHandler().sendCommandToServer(command);
+                    String result = new CommandHandler().sendCommandToServer(command, wallet);
                     System.out.println(result);
                     break;
                 }

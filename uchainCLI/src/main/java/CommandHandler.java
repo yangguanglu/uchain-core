@@ -1,22 +1,36 @@
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.uchain.common.Serializabler;
+import com.uchain.core.Account;
 import com.uchain.crypto.BinaryData;
 import com.uchain.crypto.Crypto;
 import com.uchain.crypto.*;
 import com.uchain.crypto.CryptoUtil;
 import lombok.val;
+import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
 import java.io.*;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.sql.Types;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class CommandHandler {
 
     static String url = "http://172.16.12.43:1943";
 
-    public String sendCommandToServer(String command){
+    public String sendCommandToServer(String command, Wallet wallet){
         String httpResponse = "";
         try {
             if(command.contains("help")) return Help.help;
             if(command.contains("newaddr")) return generateAddr();
+            if(command.contains("walletinfo")) return getWalletInfo();
+            if(command.trim().split("\\s+")[0].equals("send")) return sendDefaultTransaction(command, wallet);
             Command commandToSend = constructCommandToSend(command);
             String path = commandToSend.path;
             String body = DataProcessor.JsonMapperTo(commandToSend.commandSuffixes);
@@ -41,6 +55,61 @@ public class CommandHandler {
 //        println(s"Address: ${privKey.publicKey.toAddress}")
 //        println(s"Private key: ${privKey.toWIF}")
         return "";
+    }
+
+    public String getWalletInfo(){
+        Wallet wallet = WalletLoader.load();
+        String address = wallet.getPublicKey();
+        System.out.println(address);
+        return "";
+    }
+
+    public String sendDefaultTransaction(String command, Wallet wallet){
+        Command commandToSend = constructCommandToSend("getaccount -address " + wallet.getPublicKey());
+        String path = commandToSend.path;
+        try {
+            String body = DataProcessor.JsonMapperTo(commandToSend.commandSuffixes);
+            String httpResponse = ApacheHttpClient.getWithUrl(path, body);
+
+            String accountNonce = getAccount(httpResponse);
+            String nonce = String.valueOf(accountNonce);
+
+            String privkey = PrivateKey.fromWIF(wallet.privKey).toBin().toString();
+            String address = command.trim().split("\\s+")[2];
+            String assetId = "0000000000000000000000000000000000000000000000000000000000000000";
+            String amount = command.trim().split("\\s+")[4];
+
+            String sendTransCommand = "sendrawtransaction "+"-privkey "+ privkey + " -address "+ address + " -assetId " +
+                    assetId + " -amount " + amount + " -nonce" + nonce;
+            return sendCommandToServer(sendTransCommand, wallet);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            return "error occured";
+        }
+    }
+
+    public String getAccount(String httpResponse){
+        if(httpResponse.isEmpty()) return "";
+        String[] accounts = httpResponse.split("nextNonce");
+        String str = accounts[1];
+        String nonce = str.split(",")[0];
+        String[] nonce1 = nonce.split(":");
+        return nonce1[nonce1.length -1];
+//        ObjectMapper mapper = new ObjectMapper();
+//        mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+//
+////        Type[] types = new Type[1];
+////        JavaType javaType = mapper.getTypeFactory().constructCollectionType(LinkedHashMap.class, UInt256.class, Fixed8.class);
+////        final ParameterizedTypeImpl type = ParameterizedTypeImpl.make()
+//        JavaType javaType = mapper.getTypeFactory().constructParametricType(Account.class, ((LinkedHashMap<UInt256, Fixed8>).getContentType()).getClass());
+//        try {
+//            return mapper.readValue(httpResponse, new TypeReference<Map<UInt256, Fixed8>>() {});
+//        }
+//        catch (Exception e){
+//            e.printStackTrace();
+//            return null;
+//        }
     }
 
     public String readResourceTxt(String file){
@@ -145,6 +214,8 @@ public class CommandHandler {
         supportedCommandList.add("help");
         supportedCommandList.add("newaddr");
         supportedCommandList.add("getaccount");
+        supportedCommandList.add("walletinfo");
+        supportedCommandList.add("send");
         return supportedCommandList;
     }
 

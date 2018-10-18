@@ -77,6 +77,19 @@ public class PrivateKey {
         return Base58Check.encode(data);
     }
 
+    public static PrivateKey fromWIF(String wif){
+        byte[] decode;
+        decode = Base58Check.decode(wif);
+        if(decode.length == 34){
+            if(decode[33] == (byte) 0x01){
+                byte[] priv = new byte[32];
+                System.arraycopy(decode, 1, priv, 0, 32);
+                return PrivateKey.apply(CryptoUtil.array2binaryData(priv));
+            }
+        }
+        return null;
+    }
+
 //    @Override
 //    public String toString() {
 //        return toBin().getData().toString();
