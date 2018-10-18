@@ -1,0 +1,1 @@
+package com.uchain.core.consensus;import java.util.List;public interface FuncOnSwitch {    void onSwitch(List<ForkItem> from, List<ForkItem> to);}

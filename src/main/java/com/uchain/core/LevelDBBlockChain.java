@@ -2,11 +2,10 @@ package com.uchain.core;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.uchain.common.Serializable;
-import com.uchain.common.Serializabler;
 import com.uchain.core.consensus.ForkBase;
 import com.uchain.core.consensus.ForkItem;
-import com.uchain.core.consensus.ThreeTuple;
+import com.uchain.core.consensus.FuncConfirmed;
+import com.uchain.core.consensus.FuncOnSwitch;
 import com.uchain.core.datastore.*;
 import com.uchain.core.datastore.keyvalue.ProducerStatus;
 import com.uchain.crypto.*;
@@ -60,7 +59,31 @@ public class LevelDBBlockChain implements BlockChain{
 
         blockBase = new BlockBase(settings.getChainSettings().getBlockBaseSettings());
         dataBase = new DataBase(settings.getChainSettings().getDataBaseSettings());
-        forkBase = new ForkBase(settings);
+
+        FuncConfirmed funcConfirmed = block ->{
+                if (block.height() > 0) {
+                    log.info("confirm block "+block.height()+" ("+block.id()+")");
+                    dataBase.commit(block.height());
+                    blockBase.add(block);
+                }
+        };
+
+        FuncOnSwitch funcOnSwitch = (from,to) -> {
+            printChain("old chain", from);
+            printChain("new chain", to);
+            from.forEach(forkItem -> {
+                try {
+                    dataBase.rollBack();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+            to.forEach(forkItem -> {
+                applyBlock(forkItem.getBlock());
+            });
+        };
+
+        forkBase = new ForkBase(settings,funcConfirmed,funcOnSwitch);
 
         // TODO: folkBase is todo
         // TODO: zero is not a valid pub key, need to work out other method
@@ -91,8 +114,7 @@ public class LevelDBBlockChain implements BlockChain{
         }
 
         if (forkBase.head() == null) {
-            ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple = forkBase.add(genesisBlock);
-            confirmedOrSwitch(threeTuple);
+            forkBase.add(genesisBlock);
         }
 
         assert(forkBase.head().getBlock().height() >= blockBase.head().getIndex());
@@ -221,7 +243,6 @@ public class LevelDBBlockChain implements BlockChain{
     public void startProduceBlock(PublicKey producer){
         assert(pendingTxs.isEmpty());
         ForkItem forkHead = forkBase.head();
-//        UInt160 to = UInt160.fromBytes(Crypto.hash160(CryptoUtil.listTobyte(new BinaryData("0345ffbf8dc9d8ff15785e2c228ac48d98d29b834c2e98fb8cfe6e71474d7f6322").getData())));
         Transaction minerTx = new Transaction(TransactionType.Miner, minerCoinFrom,
                 producer.pubKeyHash(), "", minerAward, UInt256.Zero(), forkHead.getBlock().height()+1L,
                new BinaryData(new ArrayList<>()), new BinaryData(new ArrayList<>()),0x01,null);
@@ -246,7 +267,6 @@ public class LevelDBBlockChain implements BlockChain{
     @Override
     public Boolean addTransaction(Transaction tx){
         if(isProducingBlock()){
-            System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             if(applyTransaction(tx)){
                 pendingTxs.add(tx);
                 return true;
@@ -301,9 +321,7 @@ public class LevelDBBlockChain implements BlockChain{
     public Boolean tryInsertBlock(Block block,Boolean doApply){
         boolean inserted = false;
         if (!pendingTxs.isEmpty()) {
-            pendingTxs.forEach(tx ->{
-                unapplyTxs.put(tx.id(), tx);
-            });
+            pendingTxs.forEach(tx -> unapplyTxs.put(tx.id(), tx));
             pendingTxs.clear();
             try {
                 dataBase.rollBack();
@@ -313,14 +331,13 @@ public class LevelDBBlockChain implements BlockChain{
         }
         if (forkBase.head().getBlock().id().equals(block.prev())) {
             if (doApply == false) {
-                ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple = forkBase.add(block);
-                confirmedOrSwitch(threeTuple);
-                inserted = true;
-                latestHeader = block.getHeader();
+                if(forkBase.add(block)) {
+                    inserted = true;
+                    latestHeader = block.getHeader();
+                }
             }
             else if (applyBlock(block)) {
-                ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple = forkBase.add(block);
-                confirmedOrSwitch(threeTuple);
+                forkBase.add(block);
                 inserted = true;
                 latestHeader = block.getHeader();
             }
@@ -331,9 +348,9 @@ public class LevelDBBlockChain implements BlockChain{
         }
         else {
             log.info("received block added to minor fork chain. block "+block.height()+" "+block.id());
-            ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple = forkBase.add(block);
-            confirmedOrSwitch(threeTuple);
-            inserted = true;
+            if(forkBase.add(block)) {
+                inserted = true;
+            }
         }
         if(inserted){
             block.getTransactions().forEach(tx -> {
@@ -382,11 +399,6 @@ public class LevelDBBlockChain implements BlockChain{
             val txAmount = tx.getAmount();
             val fromBalances = fromAccount.getBalances();
             val fromAmount = fromBalances.get(tx.getAssetId());
-            System.out.println("1111111111111111111");
-            System.out.println(txAmount.getValue());
-            System.out.println("2222222222222222222");
-            System.out.println(fromAmount.getValue());
-            System.out.println("3333333333333333333");
             if(txAmount.greater(fromAmount)) txValid = false;
             if(tx.getNonce() != fromAccount.getNextNonce()) txValid = false;
         }
@@ -394,15 +406,6 @@ public class LevelDBBlockChain implements BlockChain{
         if(txValid){
             Map<UInt256, Fixed8> fromBalance = updateBalancesAccount(fromAccount.getBalances(),tx,"mus");
             Map<UInt256, Fixed8> toBalance = updateBalancesAccount(toAccount.getBalances(),tx,"add");
-            try{
-
-
-                System.out.println("fromBalance" + Serializabler.JsonMapperTo(fromBalance));
-                System.out.println("toBalance" + Serializabler.JsonMapperTo(toBalance));
-            }
-            catch (Exception e){
-                e.printStackTrace();
-            }
             dataBase.setAccount(tx.fromPubKeyHash(), new Account(true, fromAccount.getName(), fromBalance, fromAccount.getNextNonce() + 1,0x01,null),
                     tx.getToPubKeyHash(), new Account(true, toAccount.getName(), toBalance, toAccount.getNextNonce(),0x01,null));
         }
@@ -529,13 +532,13 @@ public class LevelDBBlockChain implements BlockChain{
     }
 
 
-    private void onConfirmed(Block block){
-        if (block.height() > 0) {
-            log.info("confirm block "+block.height()+" ("+block.id()+")");
-            dataBase.commit(block.height());
-            blockBase.add(block);
-        }
-    }
+//    private void onConfirmed(Block block){
+//        if (block.height() > 0) {
+//            log.info("confirm block "+block.height()+" ("+block.id()+")");
+//            dataBase.commit(block.height());
+//            blockBase.add(block);
+//        }
+//    }
 
     private void printChain(String title,List<ForkItem> fork){
         StringBuilder str = new StringBuilder();
@@ -547,29 +550,29 @@ public class LevelDBBlockChain implements BlockChain{
         log.info(title+": "+str);
     }
 
-    private void onSwitch(List<ForkItem> from,List<ForkItem> to){
-        printChain("old chain", from);
-        printChain("new chain", to);
-        from.forEach(forkItem -> {
-            try {
-                dataBase.rollBack();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-        to.forEach(forkItem -> {
-            applyBlock(forkItem.getBlock());
-        });
-    }
+//    private void onSwitch(List<ForkItem> from,List<ForkItem> to){
+//        printChain("old chain", from);
+//        printChain("new chain", to);
+//        from.forEach(forkItem -> {
+//            try {
+//                dataBase.rollBack();
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        });
+//        to.forEach(forkItem -> {
+//            applyBlock(forkItem.getBlock());
+//        });
+//    }
 
-    private void confirmedOrSwitch(ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple){
-        if(threeTuple!=null){
-            if(threeTuple.first!=null){
-                onConfirmed(threeTuple.first);
-            }
-            if(threeTuple.second!=null){
-                onSwitch(threeTuple.second,threeTuple.third);
-            }
-        }
-    }
+//    private void confirmedOrSwitch(ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple){
+//        if(threeTuple!=null){
+//            if(threeTuple.first!=null){
+//                onConfirmed(threeTuple.first);
+//            }
+//            if(threeTuple.second!=null){
+//                onSwitch(threeTuple.second,threeTuple.third);
+//            }
+//        }
+//    }
 }

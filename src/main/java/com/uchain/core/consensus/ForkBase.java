@@ -33,18 +33,22 @@ public class ForkBase {
 	private Settings settings;
 	private ForkItem _head;
 	private LevelDbStorage db;
+	private FuncConfirmed funcConfirmed;
+	private FuncOnSwitch funcOnSwitch;
 	private Map<UInt256, ForkItem> indexById = new HashMap();
 	private MultiMap<UInt256, UInt256> indexByPrev = new MultiMap();
 	private SortedMultiMap2<Integer,Boolean,UInt256> indexByHeight = new SortedMultiMap2<>("asc","reverse");
 	private SortedMultiMap2<Integer,Integer,UInt256> indexByConfirmedHeight = new SortedMultiMap2<>("reverse","reverse");
 
 
-	public ForkBase(Settings settings) {
+	public ForkBase(Settings settings, FuncConfirmed funcConfirmed,FuncOnSwitch funcOnSwitch) {
         this.settings = settings;
         String path = settings.getChainSettings().getForkBaseSettings().getDir();
         this.db = ConnFacory.getInstance(path);
         forkStore = new ForkItemStore(db,settings.getChainSettings().getForkBaseSettings().getCacheSize(),DataStoreConstant.ForkItemPrefix,new UInt256Key(),new ForkItemValue());
 		init();
+        this.funcConfirmed = funcConfirmed;
+        this.funcOnSwitch = funcOnSwitch;
 	}
 
 	/**
@@ -95,7 +99,7 @@ public class ForkBase {
 	 * @param block
 	 * @return
 	 */
-	public ThreeTuple<Block,List<ForkItem>, List<ForkItem>> add(Block block) {
+	public boolean add(Block block) {
         ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple = null;
 		Map<PublicKey, Integer> lph = Maps.newHashMap();
 		if(_head == null) {
@@ -105,7 +109,7 @@ public class ForkBase {
 				lph.put(PublicKey.apply(new BinaryData(witness.getPubkey())), 0);
 			}
             ForkItem item = makeItem(block,lph, true);
-            threeTuple = add(item);
+            return add(item);
 		}else {
 			if(!indexById.containsKey(block.id())) {
                 ForkItem prev = indexById.get(block.prev());
@@ -113,11 +117,13 @@ public class ForkBase {
                     Map<PublicKey, Integer> prodHeights = prev.getLastProducerHeight();
                     Boolean master = _head.id().equals(block.prev());
                     ForkItem item = makeItem(block,prodHeights, master);
-                    threeTuple = add(item);
-                }
-			}
+                    return add(item);
+                }else
+                    return false;
+			}else {
+			    return false;
+            }
 		}
-		return threeTuple;
 	}
 
 	private ForkItem makeItem(Block block,Map<PublicKey,Integer> heights,Boolean master){
@@ -135,26 +141,19 @@ public class ForkBase {
      * @param item
      * @return
      */
-	private ThreeTuple<Block,List<ForkItem>, List<ForkItem>> add(ForkItem item) {
+	private boolean add(ForkItem item) {
         ThreeTuple<Block,List<ForkItem>, List<ForkItem>> threeTuple;
 		if (insert(item)) {
-            Block block = null;
-            TwoTuple<List<ForkItem>, List<ForkItem>> twoTupleTemp = null;
             TwoTuple<ForkItem,ForkItem> twoItem = maybeReplaceHead();
             if (twoItem.second.prev().equals(twoItem.first.id())) {
-                block = removeConfirmed(item.confirmedHeight());
+                removeConfirmed(item.confirmedHeight());
             } else if (!twoItem.second.id().equals(twoItem.first.id())) {
-                twoTupleTemp = switchAdd(twoItem.first, twoItem.second);
+                switchAdd(twoItem.first, twoItem.second);
             }
-            if(twoTupleTemp!=null) {
-                threeTuple = new ThreeTuple(block, twoTupleTemp.first, twoTupleTemp.second);
-            }else{
-                threeTuple = new ThreeTuple(block, null, null);
-            }
+            return true;
 		}else {
-            threeTuple = new ThreeTuple(null, null, null);
+            return false;
 		}
-		return threeTuple;
 	}
 
 	private TwoTuple maybeReplaceHead(){
@@ -174,7 +173,7 @@ public class ForkBase {
 	 * @param from
 	 * @param to
 	 */
-	private TwoTuple<List<ForkItem>, List<ForkItem>> switchAdd(ForkItem from,ForkItem to) {
+	private void switchAdd(ForkItem from,ForkItem to) {
 		TwoTuple<List<ForkItem>, List<ForkItem>> twoTuple = getForks(from, to);
 		List<ForkItem> items = Lists.newArrayList();
 		Batch batch = new Batch();
@@ -190,9 +189,8 @@ public class ForkBase {
         });
 		if(db.applyBatch(batch)){
 			items.forEach(item -> updateIndex(item));
-            return twoTuple;
+            funcOnSwitch.onSwitch(twoTuple.first,twoTuple.second);
         }
-        return null;
 	}
 
 	public void close() {
@@ -223,14 +221,13 @@ public class ForkBase {
 	 * @param height
 	 * @return
 	 */
-	private Block removeConfirmed(int height) {
-        Block block = null;
+	private void removeConfirmed(int height) {
 		ThreeTuple<Integer, Boolean, UInt256> threeTuple = indexByHeight.head();
 		if(threeTuple!=null){
 			if(threeTuple.first < height){
 				ForkItem item = indexById.get(threeTuple.third);
 				if(item !=null && item.isMaster()) {
-                    block = item.getBlock();
+                    funcConfirmed.onConfirmed(item.getBlock());
 				}
 				if(item!=null) {
                     Batch batch = new Batch();
@@ -241,7 +238,6 @@ public class ForkBase {
                 }
             }
 		}
-		return block;
 	}
 
 	/**

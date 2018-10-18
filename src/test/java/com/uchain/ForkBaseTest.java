@@ -13,19 +13,25 @@ import com.uchain.core.Block;
 import com.uchain.core.BlockHeader;
 import com.uchain.core.Transaction;
 import com.uchain.core.consensus.ForkBase;
+import com.uchain.core.consensus.FuncConfirmed;
+import com.uchain.core.consensus.FuncOnSwitch;
+import com.uchain.core.datastore.BlockBase;
+import com.uchain.core.datastore.DataBase;
 import com.uchain.crypto.BinaryData;
 import com.uchain.crypto.PrivateKey;
 import com.uchain.crypto.PublicKey;
 import com.uchain.crypto.UInt256;
 import com.uchain.main.Settings;
 import com.uchain.main.Witness;
+import lombok.val;
 import org.junit.AfterClass;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ForkBaseTest {
 
@@ -100,7 +106,28 @@ public class ForkBaseTest {
         Settings settings = new Settings("config");
         settings.getChainSettings().getForkBaseSettings().setDir(dir);
         settings.getConsensusSettings().setWitnessList(witnesses);
-        ForkBase forkBase = new ForkBase(settings);
+
+        BlockBase blockBase = new BlockBase(settings.getChainSettings().getBlockBaseSettings());
+        DataBase dataBase = new DataBase(settings.getChainSettings().getDataBaseSettings());
+
+        FuncConfirmed funcConfirmed = block ->{
+            if (block.height() > 0) {
+                dataBase.commit(block.height());
+                blockBase.add(block);
+            }
+        };
+
+        FuncOnSwitch funcOnSwitch = (from, to) -> {
+            from.forEach(forkItem -> {
+                try {
+                    dataBase.rollBack();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+        };
+
+        ForkBase forkBase = new ForkBase(settings,funcConfirmed,funcOnSwitch);
 
         dbs.add(forkBase);
         dirs.add(dir);
@@ -177,13 +204,13 @@ public class ForkBaseTest {
     @Test
     public void testAdd()throws IOException{
         ForkBase forkBase = ForkBaseTest.open("test_forkBase_add", witnesses);
-        assert(forkBase.add(genesis) != null);
-        assert(forkBase.add(genesis) == null);
-        Block blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
-        assert(forkBase.add(blk1a) != null);
-        Block blk2a = ForkBaseTest.newBlock(PubA, PriA, blk1a);
-        Block blk3a = ForkBaseTest.newBlock(PubA, PriA, blk2a);
-        assert(forkBase.add(blk3a) == null );
+        assert(forkBase.add(genesis));
+        assert(!forkBase.add(genesis));
+        val blk1a = ForkBaseTest.newBlock(PubA, PriA, genesis);
+        assert(forkBase.add(blk1a));
+        val blk2a = ForkBaseTest.newBlock(PubA, PriA, blk1a);
+        val blk3a = ForkBaseTest.newBlock(PubA, PriA, blk2a);
+        assert(!forkBase.add(blk3a));
     }
 
     @Test
