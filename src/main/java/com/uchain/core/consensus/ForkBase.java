@@ -211,6 +211,11 @@ public class ForkBase {
 			ForkItem forkItem = forkStore.getValConverter().fromBytes(entry.getValue());
 			createIndex(forkItem);
 		});
+        if (indexByConfirmedHeight.size() == 0) {
+            _head = null;
+        }else {
+            _head = indexById.get(indexByConfirmedHeight.head().third);
+        }
 	}
 
 	/**

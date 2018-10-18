@@ -148,7 +148,9 @@ public class PeerConnectionManager extends AbstractActor {
 	}
 	
 	@Override
-	public void postStop() throws Exception {
+	public void postStop() {
+        Disconnected disconnected = new Disconnected(remote);
+        peerHandlerActor.tell(disconnected, getSelf());
 		log.info("Peer handler to "+remote +"销毁");
 	}
 }
