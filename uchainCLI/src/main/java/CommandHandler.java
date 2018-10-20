@@ -1,24 +1,12 @@
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.uchain.common.Serializabler;
-import com.uchain.core.Account;
 import com.uchain.crypto.BinaryData;
 import com.uchain.crypto.Crypto;
-import com.uchain.crypto.*;
 import com.uchain.crypto.CryptoUtil;
+import com.uchain.crypto.PrivateKey;
 import lombok.val;
-import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
 import java.io.*;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.sql.Types;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 public class CommandHandler {
 
@@ -223,7 +211,7 @@ public class CommandHandler {
 }
 
 class Help{
-    static String help = "APEX NETWORK\n" +
+    static String help = "UCHAIN NETWORK\n" +
             "\n" +
             "name            parameter                      description\n" +
             "getaccount      [-address]                     get account\n" +

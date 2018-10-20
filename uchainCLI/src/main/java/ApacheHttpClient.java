@@ -15,7 +15,7 @@ import java.net.URISyntaxException;
 public class ApacheHttpClient {
 
     public static CloseableHttpClient httpClient = HttpClients.createDefault();
-    static String url = "http://localhost:8080/";
+    static String url = "http://40.73.116.98:9084/";
 
     public static String postWithUrl(String path, String body){
         String responseJsonString = "";
