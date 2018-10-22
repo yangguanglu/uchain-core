@@ -36,4 +36,7 @@ public class DataStoreConstant {
 
     public static final byte[] LatestConfirmedStatePrefix = new byte[] { (byte) StoreType.getStoreType(StoreType.Index),
             (byte) StateType.getStateType(StateType.LatestConfirmed) };
+
+	public static final byte[] SwitchStatePrefix = new byte[] { (byte) StoreType.getStoreType(StoreType.Index),
+			(byte) StateType.getStateType(StateType.SwitchState) };
 }

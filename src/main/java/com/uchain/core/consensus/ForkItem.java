@@ -39,6 +39,8 @@ public class ForkItem {
         return  block.prev();
     }
 
+    public int height(){return block.height();}
+
 	/**
 	 * 计算已确认高度
 	 * @return
