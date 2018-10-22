@@ -1,3 +1,4 @@
+import com.uchain.common.Serializabler;
 import com.uchain.crypto.BinaryData;
 import com.uchain.crypto.Crypto;
 import com.uchain.crypto.CryptoUtil;
@@ -67,5 +68,23 @@ public class Wallet {
         PrivateKey privateKey = PrivateKey.fromWIF(privKey);
         String address = privateKey.publicKey().toAddress();
         return address;
+    }
+
+    public boolean isValide(String walletJson){
+        if(walletJson == null || walletJson.isEmpty()) return false;
+        try {
+            Wallet wallet = Serializabler.JsonMapperFrom(walletJson, Wallet.class);
+
+            return !(wallet.address.isEmpty() || wallet.privKey.isEmpty()
+                    || wallet.name.isEmpty() || wallet.version.isEmpty());
+        }catch (IOException e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "{" + "\"name\" : \"" + name + "\", \"address\" : \"" + address +"\", \"privKey\" :\"" + privKey + "\", \"version\" : \""+version+"\"}";
     }
 }

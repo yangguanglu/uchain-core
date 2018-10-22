@@ -35,6 +35,10 @@ public class APP {
                     System.out.println("inner error occurs");
                     break;
                 }
+                default: {
+                    System.out.println("Welcome to CLI, type \"help\" for command list:");
+                    break;
+                }
             }
         }
     }
