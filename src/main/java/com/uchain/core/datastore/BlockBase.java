@@ -63,4 +63,12 @@ public class BlockBase{
             return null;
         }
     }
+
+    public Boolean containBlock(UInt256 id) {
+        return blockStore.contains(id);
+    }
+
+    public void close(){
+        db.close();
+    }
 }

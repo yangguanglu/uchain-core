@@ -78,4 +78,25 @@ public class ProduceStateImpl {
 			this.e = e;
 		}
 	}
+
+
+    @Getter
+    @Setter
+    public static class BlockAcceptedMessage {
+        private Block block;
+
+        public BlockAcceptedMessage(Block block) {
+            this.block = block;
+        }
+
+        @Override
+        public String toString() {
+            return "BlockAcceptedMessage{" +
+                    "block=" + block +
+                    '}';
+        }
+    }
+
+    public static class ProducerStopMessage {
+    }
 }

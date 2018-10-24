@@ -41,7 +41,7 @@ public class LevelDBBlockChain implements BlockChain{
     private ProducerStateStore prodStateStore;
     private PublicKey minerCoinFrom;
     private Fixed8 minerAward;
-    private UInt160 genesisMinerAddress;
+    private UInt160 genesisCoinToAddress;
     private Transaction genesisTx;
     private BlockHeader genesisBlockHeader;
     private Block genesisBlock;
@@ -87,12 +87,12 @@ public class LevelDBBlockChain implements BlockChain{
 
         // TODO: folkBase is todo
         // TODO: zero is not a valid pub key, need to work out other method
-        minerCoinFrom = PublicKey.apply(new BinaryData(settings.getChainSettings().getChain_miner()));   // 33 bytes pub key
-        minerAward = Fixed8.Ten;
+        minerCoinFrom = PublicKey.apply(new BinaryData(settings.getChainSettings().getMinerCoinFrom()));   // 33 bytes pub key
+        minerAward = Fixed8.fromDecimal(settings.getChainSettings().getMinerAward());
 
-        genesisMinerAddress = UInt160.parse("f54a5851e9372b87810a8e60cdd2e7cfd80b6e31");
+        genesisCoinToAddress = PublicKeyHash.fromAddress(settings.getChainSettings().getCoinToAddr());
         genesisTx = new Transaction(TransactionType.Miner, minerCoinFrom,
-                genesisMinerAddress, "", minerAward, UInt256.Zero(), 0L,
+                genesisCoinToAddress, "", minerAward, UInt256.Zero(), 0L,
                 CryptoUtil.array2binaryData(BinaryData.empty),CryptoUtil.array2binaryData(BinaryData.empty),0x01,null);
 
         genesisBlockHeader =  BlockHeader.build(0, settings.getChainSettings().getChain_genesis_timeStamp(),
@@ -102,7 +102,7 @@ public class LevelDBBlockChain implements BlockChain{
         latestHeader= genesisBlockHeader;
 
         List<Transaction> pendingTxs = Lists.newArrayList();  // TODO: save to DB?
-        List<Transaction> unapplyTxs = Lists.newArrayList();  // TODO: save to DB?
+        Map<UInt256, Transaction> unapplyTxs = Maps.newHashMap();  // TODO: save to DB?
 
         populate();
 
@@ -117,12 +117,14 @@ public class LevelDBBlockChain implements BlockChain{
             forkBase.add(genesisBlock);
         }
 
+        assert(forkBase.head()!=null);
+//        forkBase.switchState.foreach(resolveSwitchFailure);
+//
+//        forkBase.head.foreach(resolveDbUnConsistent);
         assert(forkBase.head().getBlock().height() >= blockBase.head().getIndex());
 
-        if (forkBase.head() != null)
-            latestHeader = forkBase.head().getBlock().getHeader();
-        else
-            latestHeader = blockBase.head();
+        assert(forkBase.head() != null);
+        latestHeader = forkBase.head().getBlock().getHeader();
         log.info("populate() latest block "+latestHeader.getIndex()+" "+latestHeader.id());
     }
 
@@ -134,8 +136,16 @@ public class LevelDBBlockChain implements BlockChain{
     @Override
     public BlockChainIterator iterator () {
         return new BlockChainIterator(this);
-    } 
-    
+    }
+
+    @Override
+    public void close(){
+        log.info("blockchain closing");
+        blockBase.close();
+        dataBase.close();
+        forkBase.close();
+        log.info("blockchain closed");
+    }
     @Override
     public int getHeight(){
         if(forkBase.head()!=null){
@@ -169,13 +179,6 @@ public class LevelDBBlockChain implements BlockChain{
         return getLatestHeader().getTimeStamp() - genesisBlockHeader.getTimeStamp();
     }
 
-    @Override
-    public long getDistance(){
-        val state = prodStateStore.get();
-        assert (state != null);
-        return state.getDistance();
-    }
-    
     @Override
     public BlockHeader getHeader(UInt256 id){
         if(forkBase.get(id)!=null){
@@ -240,12 +243,30 @@ public class LevelDBBlockChain implements BlockChain{
     }
 
     @Override
+    public Boolean containBlock(UInt256 id){
+        return forkBase.contains(id) || blockBase.containBlock(id);
+    }
+
+    @Override
+    public Transaction getPendingTransaction(UInt256 txid) {
+        Transaction txTemp;
+        Optional<Transaction> optional = pendingTxs.stream().filter(tx -> tx.getId().equals(txid)).findFirst();
+        if (optional.isPresent()) {
+            txTemp = optional.get();
+        }else {
+            txTemp = unapplyTxs.get(txid);
+        }
+        return txTemp;
+    }
+
+    @Override
     public void startProduceBlock(PublicKey producer){
         assert(pendingTxs.isEmpty());
         ForkItem forkHead = forkBase.head();
         Transaction minerTx = new Transaction(TransactionType.Miner, minerCoinFrom,
                 producer.pubKeyHash(), "", minerAward, UInt256.Zero(), forkHead.getBlock().height()+1L,
-               new BinaryData(new ArrayList<>()), new BinaryData(new ArrayList<>()),0x01,null);
+                new BinaryData(CryptoUtil.byteToList(Crypto.randomBytes(8))), // add random bytes to distinct different blocks with same block index during debug in some cases
+                new BinaryData(new ArrayList<>()),0x01,null);
         try {
             dataBase.startSession();
         } catch (IOException e) {
@@ -259,9 +280,7 @@ public class LevelDBBlockChain implements BlockChain{
             addTransaction(transaction);
         });
 
-        pendingTxs.forEach(pendingTx -> {
-            unapplyTxs.remove(pendingTx.id());
-        });
+        pendingTxs.forEach(tx -> unapplyTxs.remove(tx.id()));
     }
 
     @Override
@@ -361,17 +380,22 @@ public class LevelDBBlockChain implements BlockChain{
     }
 
     private Boolean applyBlock(Block block){
-        boolean applied = false;
+        boolean applied = true;
         if (verifyBlock(block)) {
             try {
                 dataBase.startSession();
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            block.getTransactions().forEach(tx ->{
-                applyTransaction(tx);
-            });
-            applied = true;
+            for (Transaction tx : block.getTransactions()) {
+                if (!applyTransaction(tx))
+                    applied = false;
+            }
+        }else {
+            applied = false;
+        }
+        if (!applied) {
+            log.info("Block apply fail "+block.height()+" "+block.id());
         }
         return applied;
     }
@@ -430,6 +454,12 @@ public class LevelDBBlockChain implements BlockChain{
     private Boolean verifyBlock(Block block){
         if (!verifyHeader(block.getHeader()))
             return false;
+        else if (block.getTransactions().size() == 0) {
+            log.info("verifyBlock error: block.transactions.size == 0");
+            return false;
+        }
+        else if (!block.merkleRoot().equals(block.getHeader().getMerkleRoot()))
+            return false;
         else if (!verifyTxs(block.getTransactions()))
             return false;
         else if (!verifyRegisterNames(block.getTransactions()))
@@ -462,7 +492,26 @@ public class LevelDBBlockChain implements BlockChain{
 
 
     private Boolean verifyHeader(BlockHeader header) {
-        return header.verifySig();
+        val prevBlock = forkBase.get(header.getPrevBlock());
+        if (prevBlock==null) {
+            log.info("verifyHeader error: prevBlock not found");
+            return false;
+        } else if (header.getIndex() != prevBlock.getBlock().height() + 1) {
+            log.info("verifyHeader error: index error "+header.getIndex()+" "+prevBlock.getBlock().height());
+            return false;
+        }
+//        else if (!ProducerUtil.isProducerValid(header.timeStamp, header.producer, consensusSettings)) {
+//            log.info("verifyHeader error: producer not valid");
+//            return false;
+//        }
+        else if (!header.verifySig()) {
+            log.info("verifyHeader error: verifySig fail");
+            return false;
+        }
+        else {
+            // verify merkleRoot in verifyBlock()
+            return true;
+        }
     }
 
 

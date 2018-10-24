@@ -17,8 +17,6 @@ public interface BlockChain extends Iterable<Block>{
 
     long headTimeSinceGenesis();
 
-    long getDistance();
-
     BlockHeader getHeader(UInt256 id);
 
     BlockHeader getHeader(int index);
@@ -28,6 +26,10 @@ public interface BlockChain extends Iterable<Block>{
     Block getBlock(int height);
 
     Block getBlock(UInt256 id);
+
+    Boolean containBlock(UInt256 id);
+
+    Transaction getPendingTransaction(UInt256 txid);
     
     Block getBlockInForkBase(UInt256 id);
 
@@ -57,4 +59,5 @@ public interface BlockChain extends Iterable<Block>{
 
     String getGenesisBlockChainId();
 
+    void close();
 }

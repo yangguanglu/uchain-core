@@ -39,4 +39,12 @@ public class AddressTest {
 
         assert(address4.toString().equals("APQKUqPcJEUwRdwoxpoGQnkrRGstSXkgebk"));
     }
+
+    @Test
+    public void testAddressToHash() {
+        val hash = PublicKeyHash.fromAddress("APBC5XmSaD4vooWo3FNho1wGAUyBQo3WCTQ");
+        System.out.println(hash.toAddressString());
+        System.out.println(new BinaryData("654a5851e9372b87810a8e60cdd2e7cfd80b6e31").toString());
+        assert(new BinaryData("654a5851e9372b87810a8e60cdd2e7cfd80b6e31").toString().equals(hash.getData()));
+}
 }

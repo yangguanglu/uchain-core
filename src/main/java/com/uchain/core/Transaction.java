@@ -1,29 +1,19 @@
 package com.uchain.core;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.uchain.common.Serializabler;
+import com.uchain.crypto.*;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.val;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.uchain.common.Serializabler;
-import com.uchain.crypto.BinaryData;
-import com.uchain.crypto.Crypto;
-import com.uchain.crypto.CryptoUtil;
-import com.uchain.crypto.Fixed8;
-import com.uchain.crypto.PrivateKey;
-import com.uchain.crypto.PublicKey;
-import com.uchain.crypto.PublicKeyHash;
-import com.uchain.crypto.UInt160;
-import com.uchain.crypto.UInt256;
-
-import lombok.Getter;
-import lombok.Setter;
-import lombok.val;
 
 @Getter
 @Setter
@@ -123,7 +113,7 @@ public class Transaction implements Identifier<UInt256> {
 	}
 
 	public static ArrayList<Transaction> transactionToArrayList(Transaction transaction){
-		val list = new ArrayList<Transaction>();
+		val list = new ArrayList();
 		list.add(transaction);
 		return list;
 	}

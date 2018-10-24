@@ -7,7 +7,11 @@ import net.sf.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.util.*;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Properties;
 
 @Getter
 @Setter
@@ -49,8 +53,9 @@ public class Settings {
                 Integer.parseInt(properties.getProperty("chain_forkBase_cacheSize")));
 
         this.chainSettings = new ChainSettings(blockBaseSetting, dataBaseSetting,forkBaseSettings,
-                properties.getProperty("chain_miner"), Long.valueOf(properties.getProperty("chain_genesis_timeStamp")),
-                properties.getProperty("chain_genesis_publicKey"), properties.getProperty("chain_genesis_privateKey"));
+                properties.getProperty("minerCoinFrom"), new BigDecimal(properties.getProperty("minerAward")),Long.valueOf(properties.getProperty("chain_genesis_timeStamp")),
+                properties.getProperty("chain_genesis_publicKey"), properties.getProperty("chain_genesis_privateKey"),
+                properties.getProperty("coinToAddr"));
 
         String initialWitness = properties.getProperty("initialWitness");
         int produceInterval = Integer.parseInt(properties.getProperty("produceInterval"));

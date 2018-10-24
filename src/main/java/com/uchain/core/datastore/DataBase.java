@@ -21,7 +21,6 @@ import com.uchain.storage.Batch;
 import com.uchain.storage.LevelDbStorage;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.val;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,4 +99,7 @@ public class DataBase {
         db.commit();
     }
 
+    public void close() {
+        db.close();
+    }
 }

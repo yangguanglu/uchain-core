@@ -45,10 +45,10 @@ public class Producer extends AbstractActor {
 
 	private Map<UInt256, Transaction> txPool = new HashMap();
 	private boolean canProduce = false;
-
-	@Override
+    private ProduceTask task;
+    @Override
 	public void preStart() {
-		ProduceTask task = new ProduceTask(this, peerManager, false);
+		task = new ProduceTask(this, peerManager, false);
 		getContext().system().scheduler().scheduleOnce(Duration.ZERO, task, getContext().system().dispatcher());
 	}
 
@@ -194,8 +194,12 @@ public class Producer extends AbstractActor {
 	@Override
 	public Receive createReceive() {
 		return receiveBuilder().match(BlockAcceptedMessage.class, msg -> {
-            removeTransactionsInBlock(msg.getBlock());
-		}).match(SendRawTransaction.class, msg -> {
+            tryStartProduce(Instant.now().toEpochMilli());
+		}).match(ProducerStopMessage.class, msg -> {
+            log.info("stopping producer task");
+            task.cancel();
+            getContext().stop(getSelf());
+        }).match(SendRawTransaction.class, msg -> {
 			BinaryData rawTx = msg.getRawTx();
 			DataInputStream is = new DataInputStream(new ByteArrayInputStream(CryptoUtil.binaryData2array(rawTx)));
 			val tx = Transaction.deserialize(is);

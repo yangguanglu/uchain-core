@@ -1,9 +1,8 @@
 package com.uchain.core;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.uchain.common.Serializabler;
+import com.uchain.crypto.MerkleTree;
 import com.uchain.crypto.UInt160;
 import com.uchain.crypto.UInt256;
 import lombok.Getter;
@@ -15,9 +14,9 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Setter
 @Getter
@@ -27,12 +26,15 @@ public class Block implements Identifier<UInt160>{
     private List<Transaction> transactions;
 
     private UInt256 id;
+    private Map<UInt256, Transaction> txMp;
 
 
     public Block (BlockHeader header, List<Transaction> transactions){
         this.header = header;
         this.transactions = transactions;
-        this.id = id();
+        transactions.forEach(tx ->{
+            txMp.put(tx.id(),tx);
+        });
     }
 
     @JsonInclude
@@ -52,18 +54,17 @@ public class Block implements Identifier<UInt160>{
         return header.getTimeStamp();
     }
 
+    public UInt256 merkleRoot() {
+        return  MerkleTree.root(transactions.stream().map(tx -> tx.getId()).collect(Collectors.toList()));
+    }
+
+    public Transaction getTransaction(UInt256 id){
+        return txMp.get(id);
+    }
+
     public Transaction getTransaction(int index){
         if (index < 0 || index >= transactions.size()) return null;
         return transactions.get(index);
-    }
-
-    public ArrayList<UInt256> getTransactionIds(){
-        val size = transactions.size();
-        val ids = new ArrayList<UInt256>(size);
-        transactions.forEach(transaction -> {
-            ids.add(transaction.id());
-        });
-        return ids;
     }
 
     @Override

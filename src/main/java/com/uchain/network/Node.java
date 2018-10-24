@@ -6,7 +6,7 @@ import akka.actor.Props;
 import com.google.common.collect.Lists;
 import com.uchain.core.Block;
 import com.uchain.core.BlockChain;
-import com.uchain.core.producer.BlockAcceptedMessage;
+import com.uchain.core.producer.ProduceStateImpl;
 import com.uchain.crypto.UInt256;
 import com.uchain.network.message.BlockMessageImpl.*;
 import com.uchain.network.message.*;
@@ -46,7 +46,7 @@ public class Node extends AbstractActor{
 			log.info("received block "+msg.getBlock().height()+" ("+msg.getBlock().id()+")");
 			if(chain.tryInsertBlock(msg.getBlock(),true)) {
 				log.info("insert block "+msg.getBlock().height()+" ("+msg.getBlock().id()+") success");
-                producer.tell(new BlockAcceptedMessage(msg.getBlock()),getSelf());
+                producer.tell(new ProduceStateImpl.BlockAcceptedMessage(msg.getBlock()),getSelf());
 				peerHandlerManager.tell(new InventoryMessage(new InventoryPayload(InventoryType.Block, Arrays.asList(msg.getBlock().id()))), getSelf());
 			}else {
 				log.error("failed insert block "+msg.getBlock().height()+", ("+msg.getBlock().id()+") to db");
@@ -77,7 +77,7 @@ public class Node extends AbstractActor{
             msg.getBlocksPayload().getBlocks().forEach(block -> {
                 if (chain.tryInsertBlock(block, true)){
                     log.info("insert block "+block.height()+" ($"+block.id()+") success");
-                    producer.tell(new BlockAcceptedMessage(block),getSelf());
+                    producer.tell(new ProduceStateImpl.BlockAcceptedMessage(block),getSelf());
                 }else{
                     log.error("failed insert block "+block.height()+" ($"+block.id()+") to db");
                 }

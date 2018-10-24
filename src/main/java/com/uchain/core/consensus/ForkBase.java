@@ -51,6 +51,15 @@ public class ForkBase {
         this.funcOnSwitch = funcOnSwitch;
 	}
 
+    public List<ForkItem> getBranch(UInt256 head, UInt256 tail) {
+        ForkItem curr = indexById.get(head);
+        List<ForkItem> branch = Lists.newArrayList();
+        while (curr!=null && !curr.prev().equals(tail)){
+            branch.add(curr);
+            curr = indexById.get(curr.prev());
+        }
+        return Lists.reverse(branch);
+    }
 	/**
 	 * 当前分叉头
 	 * @return
@@ -59,6 +68,9 @@ public class ForkBase {
 		return _head;
 	}
 
+    public Boolean contains(UInt256 id) {
+        return indexById.containsKey(id);
+    }
 	/**
 	 * 根据id获取ForkItem
 	 * @param id
